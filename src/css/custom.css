@@ -1,0 +1,273 @@
+/**
+ * IUDX documentation theme.
+ * CDPG style system: Poppins typography (matching dataforpublicgood.org.in),
+ * navy primary, orange accent. Palette from the official CDPG brand reference.
+ */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+
+/* ============================================================
+   CDPG colour palette
+   ------------------------------------------------------------
+   Navy        #1F3569   (primary / headings)
+   Navy dk     #15244A   (deep backgrounds)
+   Orange      #F57E20   (accent — use sparingly)
+   Orange dk   #C95E12
+   Teal        #0E7C86
+   Green       #1E8E5A
+   Berry       #B23A48
+   Slate       #6A7488   (muted text / borders)
+   ============================================================ */
+
+:root {
+  --cdpg-navy: #1f3569;
+  --cdpg-navy-dk: #15244a;
+  --cdpg-orange: #f57e20;
+  --cdpg-orange-dk: #c95e12;
+  --cdpg-teal: #0e7c86;
+  --cdpg-green: #1e8e5a;
+  --cdpg-berry: #b23a48;
+  --cdpg-slate: #6a7488;
+
+  /* Infima primary mapped to CDPG navy */
+  --ifm-color-primary: #1f3569;
+  --ifm-color-primary-dark: #1c3060;
+  --ifm-color-primary-darker: #1a2d5a;
+  --ifm-color-primary-darkest: #15244a;
+  --ifm-color-primary-light: #243d78;
+  --ifm-color-primary-lighter: #284281;
+  --ifm-color-primary-lightest: #2f4d97;
+
+  --ifm-color-secondary: #f57e20;
+
+  /* Poppins web font (matching the CDPG / dataforpublicgood site) */
+  --ifm-font-family-base: Poppins, 'Segoe UI', system-ui, -apple-system,
+    'Helvetica Neue', Arial, sans-serif;
+  --ifm-heading-font-family: Poppins, 'Segoe UI', system-ui, sans-serif;
+
+  /* Reduced, compact type scale aligned to the CDPG site */
+  --ifm-font-size-base: 15px;
+  --ifm-code-font-size: 90%;
+  --ifm-line-height-base: 1.65;
+  --ifm-heading-font-weight: 600;
+  --ifm-heading-line-height: 1.25;
+
+  --ifm-h1-font-size: 1.9rem;
+  --ifm-h2-font-size: 1.45rem;
+  --ifm-h3-font-size: 1.15rem;
+  --ifm-h4-font-size: 1rem;
+  --ifm-h5-font-size: 0.9rem;
+  --ifm-h6-font-size: 0.85rem;
+
+  --ifm-link-color: #1f3569;
+  --ifm-link-hover-color: #c95e12;
+
+  --docusaurus-highlighted-code-line-bg: rgba(245, 126, 32, 0.12);
+
+  --ifm-navbar-shadow: 0 1px 0 rgba(31, 53, 105, 0.08);
+  --ifm-toc-border-color: #e6e8ef;
+
+  --cdpg-surface: #f5f6f9;
+  --cdpg-border: #e2e5ee;
+}
+
+/* Headings: CDPG style is navy + bold + sentence case */
+.markdown h1,
+article h1 {
+  color: var(--cdpg-navy);
+  letter-spacing: -0.005em;
+}
+.markdown h2 {
+  color: var(--cdpg-navy);
+  border-bottom: 2px solid var(--cdpg-border);
+  padding-bottom: 0.3rem;
+}
+.markdown h3 {
+  color: var(--cdpg-navy);
+}
+.markdown h4 {
+  color: var(--cdpg-slate);
+}
+
+/* Accent rule: orange is reserved for emphasis */
+.markdown a,
+article a {
+  text-decoration-color: rgba(245, 126, 32, 0.5);
+}
+
+/* Dark mode */
+[data-theme='dark'] {
+  --ifm-color-primary: #8aa2d8;
+  --ifm-color-primary-dark: #6c89cd;
+  --ifm-color-primary-darker: #5d7cc7;
+  --ifm-color-primary-darkest: #3d5fb0;
+  --ifm-color-primary-light: #a8bbe3;
+  --ifm-color-primary-lighter: #b7c7e8;
+  --ifm-color-primary-lightest: #e3eafe;
+
+  --ifm-background-color: #101728;
+  --ifm-background-surface-color: #15244a;
+  --cdpg-surface: #15244a;
+  --cdpg-border: #25335a;
+  --ifm-toc-border-color: #25335a;
+
+  --ifm-link-color: #a8bbe3;
+  --ifm-link-hover-color: #f9a45e;
+
+  --docusaurus-highlighted-code-line-bg: rgba(245, 126, 32, 0.18);
+}
+
+[data-theme='dark'] .markdown h1,
+[data-theme='dark'] article h1,
+[data-theme='dark'] .markdown h2,
+[data-theme='dark'] .markdown h3 {
+  color: #c3d0ee;
+}
+
+/* Navbar polish */
+.navbar {
+  backdrop-filter: saturate(180%) blur(8px);
+}
+.navbar__title {
+  font-family: var(--ifm-heading-font-family);
+  font-weight: 700;
+  letter-spacing: -0.005em;
+}
+/* Official IUDX wordmark lockup — give it a little more height to stay legible */
+.navbar__logo {
+  height: 2.4rem;
+}
+.navbar__logo img {
+  height: 100%;
+}
+
+/* Footer — CDPG navy dk */
+.footer--dark {
+  --ifm-footer-background-color: #15244a;
+  --ifm-footer-color: #c6cde0;
+  --ifm-footer-link-color: #a6b1cc;
+  --ifm-footer-title-color: #ffffff;
+}
+
+/* Primary button accent on hover uses orange sparingly */
+.button.button--primary {
+  --ifm-button-background-color: var(--cdpg-navy);
+  --ifm-button-border-color: var(--cdpg-navy);
+}
+
+/* GitHub icon in navbar */
+.header-github-link:hover {
+  opacity: 0.7;
+}
+.header-github-link::before {
+  content: '';
+  width: 22px;
+  height: 22px;
+  display: flex;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12'/%3E%3C/svg%3E")
+    no-repeat;
+}
+[data-theme='dark'] .header-github-link::before {
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='white' d='M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12'/%3E%3C/svg%3E")
+    no-repeat;
+}
+
+/* Cards */
+.card {
+  border: 1px solid var(--cdpg-border);
+  border-radius: 12px;
+}
+
+/* Sidebar active link accent — orange used sparingly */
+.menu__link--active:not(.menu__link--sublist) {
+  border-left: 3px solid var(--cdpg-orange);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+/* Admonitions: tip uses CDPG green, info uses navy */
+.theme-admonition-tip {
+  --ifm-color-success: var(--cdpg-green);
+}
+.theme-admonition-info {
+  --ifm-color-info: var(--cdpg-teal);
+}
+
+/* Tables */
+.markdown table {
+  display: table;
+  width: 100%;
+  font-size: 0.9rem;
+}
+.markdown table thead tr {
+  background: var(--cdpg-surface);
+}
+.markdown table th {
+  color: var(--cdpg-navy);
+}
+[data-theme='dark'] .markdown table th {
+  color: #c3d0ee;
+}
+
+/* ============================================================
+   Compact sizing — aligned to the CDPG site type scale
+   ============================================================ */
+/* Body copy a touch tighter */
+.markdown {
+  font-size: 0.95rem;
+}
+.markdown li {
+  margin-top: 0.2rem;
+}
+/* Sidebar menu */
+.menu {
+  font-size: 0.86rem;
+}
+.menu__link {
+  padding: 0.35rem 0.75rem;
+}
+/* Navbar links */
+.navbar__link {
+  font-size: 0.92rem;
+}
+/* Table of contents */
+.table-of-contents {
+  font-size: 0.78rem;
+}
+/* Admonition text */
+.theme-admonition {
+  font-size: 0.92rem;
+}
+/* Code blocks slightly smaller */
+.markdown pre code {
+  font-size: 0.82rem;
+}
+/* Breadcrumbs */
+.breadcrumbs__item {
+  font-size: 0.82rem;
+}
+
+/* ── Mermaid dark-mode adjustments ─────────────────────────────
+   Mermaid runs with one 'base' theme tuned for light mode (see
+   docusaurus.config.ts); node/actor boxes stay light panels in dark
+   mode (fine), but free-standing text needs to brighten. */
+[data-theme='dark'] .docusaurus-mermaid-container .messageText,
+[data-theme='dark'] .docusaurus-mermaid-container .loopText,
+[data-theme='dark'] .docusaurus-mermaid-container .loopText tspan,
+[data-theme='dark'] .docusaurus-mermaid-container .sequenceNumber,
+[data-theme='dark'] .docusaurus-mermaid-container .stateGroup text,
+[data-theme='dark'] .docusaurus-mermaid-container g.stateGroup .state-title ~ text {
+  fill: #cfd8ea !important;
+}
+[data-theme='dark'] .docusaurus-mermaid-container .edgeLabel,
+[data-theme='dark'] .docusaurus-mermaid-container .edgeLabel p {
+  color: #cfd8ea;
+  background: #101728 !important;
+}
+[data-theme='dark'] .docusaurus-mermaid-container .cluster rect {
+  fill: #15244a !important;
+  stroke: #2b3b66 !important;
+}
+[data-theme='dark'] .docusaurus-mermaid-container .cluster-label,
+[data-theme='dark'] .docusaurus-mermaid-container .cluster-label span {
+  color: #cfd8ea !important;
+}
