@@ -89,6 +89,7 @@ const sidebars: SidebarsConfig = {
         'module-3-advanced/rest-api-development',
         'module-3-advanced/authn-authz',
         'module-3-advanced/database-patterns',
+        'module-3-advanced/schema-migrations',
         'module-3-advanced/transactions',
         'module-3-advanced/event-driven-rabbitmq',
         'module-3-advanced/workers-cron',

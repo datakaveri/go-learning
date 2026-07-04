@@ -63,9 +63,11 @@ Packages grouped as you'll encounter them, with the concept-page each builds on:
 
 | Package | What it gives you | Taught in |
 |---|---|---|
-| `database/postgres` | pool factory, DSN handling, `WithTransaction` | [Database Patterns](../module-3-advanced/database-patterns), [Transactions](../module-3-advanced/transactions) |
-| `database/postgres/dao` | `BaseDAO[T]`: CRUD, upsert, soft-delete, `FindPage` → `Page[T]`, `WithTx` | same |
-| `database/postgres/query` | the ConditionBuilder DSL — typed operators, safe ORDER BY | same |
+| `database/postgres` | pool factory, `InTransaction` (context-propagated tx), `InRetryableTransaction`, `WithAdvisoryLock` | [Database Patterns](../module-3-advanced/database-patterns), [Transactions](../module-3-advanced/transactions) |
+| `database/postgres/repository` | **embed this** — `Base[R]`: tx-aware generic CRUD + fluent `Query`, the service-repo standard | same |
+| `database/postgres/dao` | `BaseDAO[T]`: CRUD, upsert, soft-delete+`Restore`, audit columns, `UpdateVersioned`, bulk, `FindPage` → `Page[T]`, fluent `Finder` | same |
+| `database/postgres/query` | builder + spec constructors (`query.Eq/In/And/...`) — typed operators, safe ORDER BY | same |
+| `database/postgres/migrate` | golang-migrate runner: embedded migrations, `schema_mode` gate, dirty-state reporting | [Schema Migrations](../module-3-advanced/schema-migrations) |
 | `database/redis`, `cache` | go-redis v9 client wrapper, caching helpers | — |
 | `database/elastic` | go-elasticsearch v8 client + query DSL builder (catalogue, dataplane-rs) | — |
 
