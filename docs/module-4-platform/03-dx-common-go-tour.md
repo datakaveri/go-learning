@@ -61,14 +61,18 @@ Packages grouped as you'll encounter them, with the concept-page each builds on:
 
 #### Data layer
 
+Postgres support is five small packages now, not one — each with a single job (see [Database Patterns](../module-3-advanced/database-patterns) for the full tour). All five nest under `database/postgres`, which itself is a pure directory grouping — it has no files of its own, only these subpackages (the same shape `database/redis` and `database/elastic` would use if they ever needed this much internal structure; they don't yet, so they stay flat).
+
 | Package | What it gives you | Taught in |
 |---|---|---|
-| `database/postgres` | pool factory, `InTransaction` (context-propagated tx), `InRetryableTransaction`, `WithAdvisoryLock` | [Database Patterns](../module-3-advanced/database-patterns), [Transactions](../module-3-advanced/transactions) |
-| `database/postgres/repository` | **embed this** — `Base[R]`: tx-aware generic CRUD + fluent `Query`, the service-repo standard | same |
-| `database/postgres/dao` | `BaseDAO[T]`: CRUD, upsert, soft-delete+`Restore`, audit columns, `UpdateVersioned`, bulk, `FindPage` → `Page[T]`, fluent `Finder` | same |
-| `database/postgres/query` | builder + spec constructors (`query.Eq/In/And/...`) — typed operators, safe ORDER BY | same |
-| `database/postgres/migrate` | golang-migrate runner: embedded migrations, `schema_mode` gate, dirty-state reporting | [Schema Migrations](../module-3-advanced/schema-migrations) |
-| `database/redis`, `cache` | go-redis v9 client wrapper, caching helpers | — |
+| `database/postgres/client` | Pool factory (`NewPool`), DSN/pool-size config, pgx tracer composition (`MultiTracer`, `SlowQueryTracer`) | [Database Patterns](../module-3-advanced/database-patterns) |
+| `database/postgres/transaction` | `WithTransaction`/`InTransaction` (context-propagated ambient transaction), `InRetryableTransaction`, `WithAdvisoryLock` | [Database Patterns](../module-3-advanced/database-patterns), [Transactions](../module-3-advanced/transactions) |
+| `database/postgres/dao` | `BaseDAO[T]`: CRUD, upsert, soft-delete, optimistic locking (`UpdateVersioned`), bulk (`InsertMany`/`CopyFrom`), `FindPage` → `Page[T]`, and `Finder[T]` — the fluent DSL (`Where`/`OrderBy`/`Join`/`Select`/`GroupBy`/`Having`) | same |
+| `database/postgres/query` | the DSL's building blocks — typed `Condition` operators, `Join`, safe `ORDER BY`, the `SQLBuilder` that renders them | same |
+| `database/postgres/repository` | `Base[R]` — embeddable generic repository wrapper around `BaseDAO[T]`, options-based `New` (`WithTable`/`WithID`/`WithDAOOption`), `NewWithSQL` for the SQLC escape hatch | same |
+| `database/postgres/migrate` | embedded, versioned schema migrations (`Run`/`Status`) for a service's own net-new tables | [Schema Migrations](../module-3-advanced/schema-migrations) |
+| `database/postgres/sqlcx` | transaction-propagation-aware DBTX provider for SQLC-generated queries | same |
+| `database/redis`, `cache` | go-redis v9 client wrapper, caching helpers (`cache.GetOrLoad[T]` — singleflight-protected cache-aside) | — |
 | `database/elastic` | go-elasticsearch v8 client + query DSL builder (catalogue, dataplane-rs) | — |
 
 #### Async & observability
@@ -84,7 +88,7 @@ Plus the long tail — email notifier, S3/appid clients — inventoried in `GO-P
 
 ### Known gaps — don't be surprised, don't fill them ad hoc
 
-The platform review records what the library *doesn't* have yet: OTel tracing wiring, a generalized outbox helper (acl's is hand-built), a consumer framework (DLQ/retry boilerplate is still repeated), HTTP retry/backoff helpers, bulk-ops and optimistic-locking DAO methods. Two implications: (1) don't hunt for these and conclude you're blind; (2) if your work needs one, that's a *library* conversation with the team — exactly the admission rule above — not a private helper in your service.
+Some gaps the platform review once flagged are now closed — bulk-ops and optimistic-locking DAO methods (`InsertMany`/`CopyFrom`/`UpdateVersioned`) have been in `dao/` for a while, OTel tracing wiring now exists (`observability.Init` + `client.WithTracers`, see [Observability](../module-3-advanced/observability)), and a generalized outbox-plus-scheduler pattern replaced acl's original hand-built dispatcher (`messaging/outbox.Dispatcher` + `scheduler.Runner`, see [Workers & Cron](../module-3-advanced/workers-cron)). Still genuinely open: a shared RabbitMQ consumer framework (DLQ/retry boilerplate is still repeated per service) and HTTP retry/backoff helpers for outbound calls. Two implications: (1) don't hunt for the closed ones and conclude you're blind — check the package tables above first; (2) if your work needs something from the still-open list, that's a *library* conversation with the team — exactly the admission rule above — not a private helper in your service.
 
 :::info[Platform connection]
 The fastest way to internalize the library is to watch it being consumed: split your screen with `dx-acl-go/cmd/server/main.go` on one side and the packages it imports on the other, and follow each import to its definition. Nearly every line of that main is a row from the tables above.
@@ -93,7 +97,7 @@ The fastest way to internalize the library is to watch it being consumed: split 
 ## Exercises
 
 1. **Inventory check**: open every package in the boot/contract/identity tables and, for each, write one line: main entry point + one design choice you noticed. (Yes, all of them — this exercise *is* the page.)
-2. Read `dao/base.go` end to end and answer: how does `FindPage` build its two queries? Where does the soft-delete filter apply? What would bulk-insert require?
+2. Read `dao/base.go`, `dao/count.go`, and `dao/finder.go` end to end (the package is split into topic files now — CRUD/count/batch/finder each get their own) and answer: how does `FindPage` build its two queries? Where does the soft-delete filter apply? What does `InsertMany` vs `CopyFrom` each require, and when would you pick one over the other?
 3. Read `messaging/rabbitmq`'s reconnect loop: what triggers it, what's the backoff, what happens to a consumer mid-reconnect?
 4. Migrate `dx-scratch-go` from your handwritten helpers to the real library (envelope writers, StandardStack, health, config loader). Count the lines you delete.
 5. Judgment reps: for each, library or service? — a URL slugifier used by one service; retry-with-backoff for outbound HTTP; marketplace price calculation; a `FindByIDs` DAO batch method. Justify each in a sentence.
@@ -102,7 +106,7 @@ The fastest way to internalize the library is to watch it being consumed: split 
 
 - What's the admission rule for the library, in one sentence?
 - Which package would you reach for to: bound a query's page size? verify a gateway signature? survive a broker restart? add `/metrics`?
-- Name three recorded gaps and the correct process when you hit one.
+- Name the gaps that are still genuinely open, the ones that have since closed, and the correct process when you hit one that's still open.
 
 ## References
 
