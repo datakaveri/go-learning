@@ -87,9 +87,19 @@ The platform runs Go services against the **legacy databases** during migration,
 
 This is why `dx-acl-go`'s baseline creates only `policy_outbox` and `request`-adjacent enums — not `policy`. And why audit columns (`created_by` …) are **deferred** on legacy tables: we can't ALTER what Flyway owns. Violating this boundary is the fastest way to break the parallel-run guarantee.
 
-### Writing a migration
+### Creating a migration — when and how
 
-Naming: `NNNN_short_title.up.sql` + `NNNN_short_title.down.sql`, zero-padded, strictly sequential:
+**When:** any change to a table your service owns — a new table, a column, an index, a constraint, a backfill. If it changes the schema, it is a migration file, never an `ALTER` typed into psql and never app-issued DDL. **When not:** never against a Flyway-owned legacy table (see the ownership rule above).
+
+**How:** scaffold the paired files with the platform CLI so numbering and naming are correct by construction —
+
+```bash
+go run github.com/datakaveri/dx-common-go/cmd/dx new migration add_outbox_attempts
+# → db/migrations/0002_add_outbox_attempts.up.sql
+# → db/migrations/0002_add_outbox_attempts.down.sql   (both created, empty)
+```
+
+Naming: `NNNN_short_title.up.sql` + `NNNN_short_title.down.sql`, zero-padded, strictly sequential — **not timestamps**, so ordering is reviewable in a diff:
 
 ```sql
 -- db/migrations/0002_outbox_attempts.up.sql
@@ -131,15 +141,22 @@ schema migrations FAILED — database may be DIRTY
 
 This is deliberate: a half-applied migration is precisely the situation where blind retries destroy data. Inspect, repair, `force` the version, redeploy.
 
-### Rollback = roll forward
+### Managing schema versions across services
 
-In production the platform does **not** run down migrations. If `0007` shipped something wrong, you write `0008` that corrects it. Reasons:
+Multiple Go services share the interim `iudx_db`, so version tracking has to stay collision-free **and** independently checkable per service:
 
-- Down migrations are the least-tested SQL in any codebase — running them for the first time *during an incident* is how incidents get worse.
-- Data written since the deploy often can't be un-written (a dropped column takes its data with it).
-- Roll-forward keeps one linear history that matches what actually happened.
+- **One history table per service.** Each `Run` call passes its own `TableName` (`schema_migrations_acl`, `schema_migrations_user`, …) — golang-migrate's `x-migrations-table` convention expressed through `Config.TableName`. Service A at version 5 and service B at version 12 coexist in one database without either seeing the other's history.
+- **The binary carries its schema.** Migrations are embedded (`embed.FS`), so "which versions exist" is a property of the deployed image, not a separate artifact that can version-skew against the code.
+- **Detect drift with `Status` before serving.** `dxmigrate.Status(cfg, fsys, dir)` returns `(version, dirty, err)` without applying anything — use it for a boot-time guard that refuses to start if the database is *ahead* of this binary (a rollback that left newer migrations applied), which a plain `Run` wouldn't catch. Pair it with the readiness gate below.
+- **Expand → migrate → contract keeps versions rolling-compatible.** Because a rolling deploy runs the old and new binaries against the *same* database for a window, every migration must leave the previous binary able to run — which is the whole reason additive-first ordering is normative, not just tidy.
 
-Downs still exist — they make dev iteration and CI reversibility cheap. They're a development tool, not an operational one.
+### Rollback strategies — roll forward, expand/contract, and the dev-only down
+
+Production "rollback" is not `migrate down`. There are three tools, for three situations:
+
+1. **Roll forward (the default).** If `0007` shipped something wrong, write `0008` that corrects it. Down migrations are the least-tested SQL in any codebase — running them for the first time *during an incident* is how incidents get worse; data written since the deploy often can't be un-written (a dropped column takes its data with it); and roll-forward keeps one linear history that matches what actually happened.
+2. **Expand → migrate → contract *is* your safe rollback for schema shape.** Because the expand step is additive and the old binary still works against the expanded schema, you can roll the *application* back to the previous image at any point before the contract migration ships — no schema change needed. This is why you never rename/retype a column in place: doing so removes the ability to roll the binary back. The schema's backward-compatibility window is the rollback plan.
+3. **Down migrations — dev and CI only.** Downs still exist; they make local iteration and the CI up→down→up reversibility check cheap. They are a development tool, not an operational one. Never wire an automatic down into a deploy.
 
 ### CI/CD
 

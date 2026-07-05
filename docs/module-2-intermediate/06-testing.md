@@ -109,7 +109,7 @@ func (f *fakeStore) Insert(_ context.Context, p *domain.Policy) error {
 }
 ```
 
-Now `NewPolicyService(&fakeStore{}, ...)` tests business logic with zero infrastructure. For the repository layer itself, unit fakes prove nothing — that layer is covered by **integration tests against real Postgres** (the local stack), which is Module 4's [Testing Strategy](../module-4-platform/testing-strategy) topic.
+Now `NewPolicyService(&fakeStore{}, ...)` tests business logic with zero infrastructure. For the repository layer itself, unit fakes prove nothing — that layer is covered by **integration tests against real Postgres**, spun up with `dxtest/containers` (testcontainers, with a DSN fallback and an automatic skip when Docker is absent). That's Module 4's [Testing Strategy](../module-4-platform/testing-strategy) topic.
 
 ### Coverage — a flashlight, not a target
 

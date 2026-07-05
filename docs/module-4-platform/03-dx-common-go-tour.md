@@ -61,7 +61,7 @@ Packages grouped as you'll encounter them, with the concept-page each builds on:
 
 #### Data layer
 
-Postgres support is five small packages now, not one — each with a single job (see [Database Patterns](../module-3-advanced/database-patterns) for the full tour). All five nest under `database/postgres`, which itself is a pure directory grouping — it has no files of its own, only these subpackages (the same shape `database/redis` and `database/elastic` would use if they ever needed this much internal structure; they don't yet, so they stay flat).
+Persistence is organized by **backend**, each backend a directory grouping of small single-job packages. Postgres is seven sub-packages (see [Database Patterns](../module-3-advanced/database-patterns) and [SQLC vs the DSL](../module-3-advanced/persistence-sqlc-vs-dsl)); Elasticsearch — restructured 2026-07-05 from the old flat `database/elastic` into the nested `database/elasticsearch/{client,query,repository,mapping,indexing}` (see [Elasticsearch](../module-3-advanced/elasticsearch)) — is five; Redis stays flat. `database/postgres` and `database/elasticsearch` are pure directory groupings with no files of their own, and they **never import each other** (no cross-store dependency).
 
 | Package | What it gives you | Taught in |
 |---|---|---|
@@ -73,7 +73,8 @@ Postgres support is five small packages now, not one — each with a single job 
 | `database/postgres/migrate` | embedded, versioned schema migrations (`Run`/`Status`) for a service's own net-new tables | [Schema Migrations](../module-3-advanced/schema-migrations) |
 | `database/postgres/sqlcx` | transaction-propagation-aware DBTX provider for SQLC-generated queries | same |
 | `database/redis`, `cache` | go-redis v9 client wrapper, caching helpers (`cache.GetOrLoad[T]` — singleflight-protected cache-aside) | — |
-| `database/elastic` | go-elasticsearch v8 client + query DSL builder (catalogue, dataplane-rs) | — |
+| `database/elasticsearch/{client,query,repository,mapping,indexing}` | the reusable ES module: `esclient.New`, the query DSL, typed `Repo[T]`, mappings-as-code + blue/green lifecycle, bulk/`Sync`/`Worker` (catalogue, dataplane-rs) | [Elasticsearch](../module-3-advanced/elasticsearch) |
+| `dxtest/containers`, `dxtest/fixtures` | testcontainers `Postgres`/`Redis` with `DX_TEST_PG_DSN` fallback (`WithMigrations`/`WithSetupSQL`) + the shared fixture schema — imported only by test binaries | [Testing Strategy](testing-strategy) |
 
 #### Async & observability
 
