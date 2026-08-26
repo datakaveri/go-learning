@@ -1,62 +1,64 @@
 ---
-title: First Real Contribution
+title: First Contribution
 sidebar_label: First Contribution
-description: Choosing a starter task, working it end to end, and landing your first merged PR on the platform.
+description: Select, scope, implement, and verify a low-risk production contribution.
 ---
 
-# First Real Contribution
+# First contribution
 
-## Learning objectives
+## Choose evidence-backed work
 
-Land a real, merged PR on a real service — the final milestone (M5) and the end of onboarding. Equally important: experience the full loop (ticket → design → implement → gate → review → merge) at production stakes, with a safety-appropriate scope.
+Good first contributions:
 
-## Prerequisites
+- a missing test for a supported behavior;
+- an explicit security or validation defect with a small fix;
+- route/OpenAPI drift;
+- an unbounded timeout, body, sort, or concurrency setting;
+- a service-local duplicate of an existing platform seam;
+- a documentation mismatch verified against source;
+- one roadmap item already scoped by maintainers.
 
-- [Capstone service](capstone-service) built and reviewed.
+Avoid broad gateway, authorization-model, schema, fleet-wide, or cross-service changes until you have traced and tested the affected contracts.
 
-## Time estimate
+## Understand before editing
 
-**4–8 hours** of work — spread over the review cycle's real-world latency.
+1. Reproduce or observe current behavior.
+2. Identify owning repository and layer.
+3. Trace callers, stores, events, deployment, and client contract.
+4. Read the applicable platform and SDK reference.
+5. Write the smallest acceptance criteria.
+6. Record risk, compatibility, and rollback.
 
-## Choosing the right first task
+## Implement
 
-Work with your lead/buddy. A good first contribution is **real but bounded**: it matters enough to review properly and small enough that the platform machinery — not the problem — is the learning.
+- preserve unrelated local work;
+- keep the diff focused;
+- use current dx-common-go seams;
+- add the failing test first when practical;
+- include negative, cancellation, and authorization cases;
+- update the authoritative documentation only;
+- do not mix mechanical cleanup with behavior change.
 
-Good shapes, roughly in order of preference:
+## Verify
 
-1. **A parity gap** — porting a small missing legacy behavior in a partial-parity service (the `SERVICES.md` table and `ROADMAP.md`'s P1/P2 items are the shopping list). Well-specified by definition: the legacy behavior *is* the spec, and your [contract-testing](../module-4-platform/testing-strategy) habit applies directly.
-2. **A hardening item** — the platform review's open findings (a missing DLQ, audit middleware absent on a service, a missing handler test). High value, crisp acceptance criteria.
-3. **An endpoint addition** to a healthy service — your capstone, at production stakes.
-4. **A shared-library improvement** — only if something from the [known gaps list](../module-4-platform/dx-common-go-tour) genuinely blocks other work you're doing; library PRs get more scrutiny by design.
+Run repository unit, race, vet, integration, contract, and smoke checks proportional to risk. Record exact results and skipped checks. Inspect the final diff for secrets, generated files, accidental API changes, and unrelated formatting.
 
-Avoid for a *first* PR: gateway config, anything in the auth path, schema changes to legacy tables, cross-service refactors. Not because you can't — because blast radius should grow with track record.
+## Review handoff
 
-## The workflow, at full fidelity
+Your PR description should answer:
 
-This is [Repos & Workflow](../module-4-platform/repo-structure-workflow)'s ticket-to-merge list, now with stakes. Points that distinguish a smooth first PR:
+- What user or operator problem is solved?
+- What source evidence established the old behavior?
+- Which contracts change or remain unchanged?
+- What are the security and operational effects?
+- Which commands passed?
+- How is the change deployed, observed, and reversed?
+- What is deliberately outside scope?
 
-**Before writing code**
-- Reproduce/observe the current behavior in your local stack first. For a parity gap, call the legacy endpoint and save the response — that's your spec and your test oracle.
-- Write your plan in three sentences (files, approach, tests) and get a nod from your buddy *before* implementing. Cheap insurance against a week in the wrong direction.
+## Post-deploy
 
-**While writing**
-- Match the service's existing conventions even where you might choose differently — consistency within a service beats your preference. Real deviations from *standards* are a finding; note them for a separate ticket rather than fixing drive-by.
-- Keep the diff minimal: no opportunistic reformatting, no unrelated renames. Reviewers review what changed; noise hides signal.
+Watch rollout health, request error and latency, relevant dependency metrics, event backlog, and domain outcome. A contribution is not finished at merge if the delivery workflow includes deployment verification.
 
-**The PR itself**
-- Description: what + why, the ticket link, how you tested (paste the contract diff / smoke output — evidence, not claims), and anything you're unsure about *called out explicitly*. Flagging your own open questions is a strength signal, not a weakness.
-- Confirm the gate ran locally. A first PR that fails CI on `gofmt` sets exactly the wrong tone.
+## Graduation checkpoint
 
-**Review and after**
-- Respond to every comment — with a change or a (brief, genuine) case for the current form. Push fixes as new commits during review so re-review is a diff, not a re-read.
-- After merge: follow your change through the [pipeline](../module-4-platform/deployment) — image, gitops bump, and your service's logs in dev. You break it, you watch it; you shipped it, you also watch it.
-
-## After the merge
-
-That's M5 — onboarding complete. Three habits carry forward:
-
-- **The standards are your review voice.** Cite sections, kindly, when reviewing others — you'll start receiving review requests soon.
-- **The curriculum stays a reference.** The platform-connection boxes map topics to source; the roadmap's checkpoints work in reverse when you need a refresher.
-- **Close the loop.** Something in these pages wrong, stale, or missing by the time you finish? The go-learning repo takes PRs too — the next joiner learns from yours. It's also, fittingly, a fine second contribution.
-
-Welcome to the team. 🎉
+Explain the change to a reviewer from the gateway boundary through application, data, events, tests, and deployment. If any arrow relies on assumption, identify how you would prove it.

@@ -1,139 +1,100 @@
 ---
 title: Interfaces
 sidebar_label: Interfaces
-description: Implicit satisfaction, small interfaces, the comma-ok assertion, and Go's most important design rule.
+description: Implicit satisfaction, consumer-owned ports, type assertions, and interface design.
 ---
 
 # Interfaces
 
-## Learning objectives
+## Outcomes
 
-- Define and satisfy interfaces implicitly — no `implements` keyword.
-- Apply the platform rules: keep interfaces small, **define them at the consumer**, accept interfaces / return concrete types.
-- Use type assertions (comma-ok form only) and type switches safely.
-- Explain the "typed nil" trap.
+You will define small interfaces at the point of use, inject implementations, and avoid interfaces that only mirror a concrete type.
 
-## Prerequisites
+## Implicit satisfaction
 
-- [Structs & Methods](structs-methods), [Pointers & Memory](pointers-memory-basics)
-
-## Time estimate
-
-**4 hours**
-
-## Concepts
-
-### Implicit satisfaction
-
-An interface is a set of method signatures. Any type with those methods satisfies it — **no declaration connects them**:
-
-```go
-type Checker interface {
-	Check(ctx context.Context) error
+~~~go
+type Clock interface {
+    Now() time.Time
 }
 
-type PgChecker struct{ pool *pgxpool.Pool }
+type SystemClock struct{}
 
-func (c *PgChecker) Check(ctx context.Context) error {
-	return c.pool.Ping(ctx) // *PgChecker is now a Checker. That's it.
-}
-```
-
-This decouples packages: the interface's author and the implementation's author never need to know about each other.
-
-### Small interfaces win
-
-The stdlib's most-used interfaces have one or two methods (`io.Reader`, `io.Writer`, `fmt.Stringer`, `error`). A one-method interface is trivially satisfiable, mockable, and composable. If your interface has six methods, you've probably defined a class, not an interface.
-
-### Define interfaces at the consumer
-
-This is the rule that most surprises people coming from Java/C#:
-
-> The package that **uses** the dependency defines the interface, sized to exactly what it needs. The implementing package returns a **concrete type** and doesn't know the interface exists.
-
-```go
-// package service — the CONSUMER defines what it needs:
-type PolicyStore interface {
-	Insert(ctx context.Context, p *domain.Policy) error
-	FindByID(ctx context.Context, id string) (*domain.Policy, error)
+func (SystemClock) Now() time.Time {
+    return time.Now().UTC()
 }
 
-type PolicyService struct{ store PolicyStore }
+var _ Clock = SystemClock{}
+~~~
 
-// package repository — the PRODUCER returns a concrete type:
-func NewPolicyRepo(pool *pgxpool.Pool) *PolicyRepo { ... }
-```
+There is no implements declaration. A type satisfies an interface by having its method set. The compile-time assertion is optional but useful at adapter boundaries.
 
-`*PolicyRepo` satisfies `PolicyStore` implicitly. Benefits: the service is testable with a fake store; the repository stays honest (no premature abstraction); and adding a repo method doesn't force every consumer to care. Corollary rule: **accept interfaces, return concrete types.**
+## Define the port beside its consumer
 
-### Type assertions — comma-ok, always
+~~~go
+package service
 
-```go
-var v any = fetch()
+type WidgetStore interface {
+    Get(context.Context, string) (Widget, error)
+    Save(context.Context, Widget) error
+}
 
-s, ok := v.(string) // comma-ok: safe
-if !ok { /* handle */ }
+type Service struct {
+    widgets WidgetStore
+}
 
-s := v.(string)     // single-value form PANICS on mismatch — banned in platform code
-```
+func New(widgets WidgetStore) *Service {
+    return &Service{widgets: widgets}
+}
+~~~
 
-Type switches handle several possibilities cleanly:
+The application names only the behavior it needs. A PostgreSQL adapter and a test fake can both satisfy it without the service importing either.
 
-```go
-switch x := v.(type) {
+## Method sets
+
+A value of type T has methods with value receivers. A pointer *T has methods with both pointer and value receivers. If an interface requires a method implemented only on *T, pass a pointer.
+
+Use a pointer receiver when a method mutates the value, the type is large, or consistency requires it. Do not mix receivers without a reason.
+
+## Assertions and type switches
+
+~~~go
+checker, ok := dependency.(health.Checker)
+if !ok {
+    return errors.New("dependency has no health check")
+}
+
+switch value := input.(type) {
 case string:
-	return x
-case int:
-	return strconv.Itoa(x)
-case fmt.Stringer:
-	return x.String()
+    return parseString(value)
+case []byte:
+    return parseBytes(value)
 default:
-	return fmt.Sprintf("%v", v)
+    return fmt.Errorf("unsupported input %T", input)
 }
-```
+~~~
 
-### The typed-nil trap
+Use comma-ok unless a failed assertion is a proven programmer invariant. Avoid interface{} or any when a type parameter or small interface can express the contract.
 
-An interface value holds a (type, value) pair. It is `== nil` only when **both** are nil:
+## Interface design rules
 
-```go
-func find() *Record { return nil }
+- Keep interfaces small and cohesive.
+- Accept interfaces; return useful concrete types or existing contracts.
+- Do not create an interface merely to mock a concrete dependency.
+- Include context on operations that can block.
+- Make lifecycle explicit; an owner closes the resource.
+- Do not hide vendor-specific options behind generic maps.
 
-var v any = find()
-fmt.Println(v == nil) // false! v holds (type=*Record, value=nil)
-```
+## Platform connection
 
-This bites hardest with `error` returns — returning a nil concrete `*MyError` through an `error` interface makes `err != nil` true. Rule: functions returning `error` return literal `nil`, not a nil concrete pointer.
+dx-common-go uses this design throughout: cache.Store, events.Bus, sql.DB, health.Checker, and service-defined repositories. Read one interface and its primary adapter, then identify which package owns construction.
 
-### The empty interface and `any`
+## Exercise
 
-`any` (alias for `interface{}`) matches everything and therefore tells you nothing. It's appropriate at true dynamic boundaries (JSON of unknown shape, `map[string]any` constraints) and almost nowhere else — [Generics](generics) replaced most historical uses.
-
-:::info[Platform connection]
-The consumer-defined-interface rule **is** the DX architecture in miniature: every service layer defines the store interface it needs, and `internal/repository/postgres` provides the concrete type — which is exactly what makes handler and service tests possible without a database. In `dx-common-go`, `health.Checker` (one method) lets any dependency plug into `/healthz/ready`. And the comma-ok rule is enforced by the platform's style skill — the panicking form won't survive review.
-:::
-
-## Exercises
-
-1. Define `type Notifier interface{ Notify(msg string) error }` in a `service` package; implement `EmailNotifier` and `SlackNotifier` in another package (returning concrete types); wire both through the service. No `implements` anywhere — verify with a compile-time assertion: `var _ service.Notifier = (*EmailNotifier)(nil)`.
-2. Reproduce the typed-nil trap with an `error` return, observe the wrong behavior, then fix it.
-3. Write `func describe(v any) string` with a type switch covering `string`, `bool`, `[]byte`, `fmt.Stringer`, default.
-4. Take your Module-1 `Dataset` type and make it satisfy `fmt.Stringer` and `sort.Interface` (over a `[]Dataset` wrapper type).
-
-## Mini-project — pluggable storage (2 h)
-
-Build a tiny key-value CLI (`get`/`set`/`list`) where the command layer defines `type Store interface {...}` and two backends implement it: an in-memory map and a JSON file. Switch backends with a flag. This is Module 2's [dependency injection](../module-2-intermediate/dependency-injection) in embryo.
+Implement an in-memory WidgetStore and a service that rejects duplicate names. Write tests using only the interface. Then list the smallest methods a PostgreSQL adapter actually needs.
 
 ## Check yourself
 
-- Where should an interface be declared, and who should return concrete types?
-- Why is the one-value type assertion banned in platform code?
-- Explain how an interface holding a nil pointer is not nil.
-- Why are one-method interfaces preferred?
-
-## References
-
-- [A Tour of Go — Interfaces](https://go.dev/tour/methods/9)
-- [Effective Go — Interfaces](https://go.dev/doc/effective_go#interfaces)
-- [Go FAQ — nil error](https://go.dev/doc/faq#nil_error) — the typed-nil explanation
-- [Google Go Style Guide — Interfaces](https://google.github.io/styleguide/go/decisions#interfaces)
+- Does *T satisfy every interface T satisfies?
+- Who should own a repository interface: its consumer or its driver?
+- When is a type assertion appropriate?
+- Why is returning a huge vendor-shaped interface a coupling problem?

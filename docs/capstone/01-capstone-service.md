@@ -1,67 +1,78 @@
 ---
-title: "Capstone — Build dx-bookmarks-go"
+title: Capstone Service
 sidebar_label: Capstone Service
-description: Build a complete DX-style service with dx-common-go, graded against the standards checklist.
+description: Build and verify a complete Data Exchange-style bookmarks service.
 ---
 
-# Capstone — Build `dx-bookmarks-go`
+# Capstone service
 
-## Learning objectives
+**Status: Implemented learning assignment.** Follow the canonical [new-service tutorial](../new-service/quick-start.md) and [review scorecard](../standards/review-scorecard.md); this service is not part of the CDPG fleet.
 
-This is the integration test for *you*: one service, every platform pattern, no scaffolding provided. Completing it to rubric means you can be handed a real service ticket with confidence — yours and the team's.
+Build dx-bookmarks-go: users bookmark catalogue items, list their bookmarks, annotate them, and remove them.
 
-## Prerequisites
+## Functional contract
 
-All of Modules 0–4. Budget **12–16 hours** across 1–2 weeks. Work as if it were real: feature branch, incremental commits, the gate before every push.
+- POST /v1/bookmarks creates a bookmark and is idempotent for user + item.
+- GET /v1/bookmarks returns a deterministically paged list with allowed sorting.
+- `GET /v1/bookmarks/{id}` returns one owned bookmark.
+- `PATCH /v1/bookmarks/{id}` changes a bounded note.
+- `DELETE /v1/bookmarks/{id}` removes it.
+- bookmark.created and bookmark.deleted events are published through an outbox.
 
-## The brief
+All business routes require identity and destination-bound workload verification. Ownership and organisation isolation are enforced even when an ID is guessed. Catalogue existence is checked through an authenticated internal client port with a bounded timeout. Current relationship checks use `dx-authz-go`; planned OPA behavior must not be invented.
 
-Build **`dx-bookmarks-go`**: users bookmark datasets and annotate them. Deliberately small domain — every ounce of difficulty should go into *platform correctness*, not business complexity.
+## Architecture acceptance
 
-**Functional requirements**
+- platform/bootstrap owns lifecycle.
+- Typed config embeds platform/config.Base.
+- Domain and application import no router, SQL driver, AMQP, or vendor client.
+- platform/http declares routes and typed handlers.
+- platform/errors and platform/paging define API behavior.
+- platform/database/sql owns transactions and PostgreSQL adapter behavior.
+- platform/events owns typed topics and outbox dispatch.
+- platform/observability/health reports dependencies.
 
-| Endpoint | Behavior |
-|---|---|
-| `POST /iudx/v2/bookmarks` | Create (datasetId + optional note). Authenticated. 409 on duplicate per user+dataset |
-| `GET /iudx/v2/bookmarks` | Caller's bookmarks: paginated, sortable (whitelist), filter by datasetId |
-| `GET /iudx/v2/bookmarks/{id}` | Fetch one — owner only (403 otherwise) |
-| `PATCH /iudx/v2/bookmarks/{id}` | Update the note (pointer-as-optional semantics) |
-| `DELETE /iudx/v2/bookmarks/{id}` | Soft delete; invisible to all reads thereafter |
+## Data
 
-**Platform requirements** — the actual test:
+Create a service-owned PostgreSQL schema with embedded migrations. Run one controlled migration actor before serving replicas and keep business code independent of the operational boot mode. Add a unique user/item constraint, stable paging index, timestamps, and bounded note length.
 
-1. **Repo shape**: the canonical layout; `dx-common-go` via `replace`; README with API table, env vars, events.
-2. **Boot contract**: `LoadService[T]` + `Validate()`; zap; Postgres hard (Fatal), RabbitMQ optional (Warn + no-op); idempotent schema ensure; `httpserver.Start()`.
-3. **HTTP**: `StandardStack`; embedded OpenAPI spec with request validation + `/docs`; resolver middleware (HMAC + JWT) with owner checks from the context user; audit middleware on mutating routes.
-4. **Contract**: envelopes via the response writers with your URN prefix (`urn:dx:bookmarks:`); taxonomy errors; `request.Builder`-style pagination.
-5. **Persistence**: `BaseDAO[Bookmark]` where it fits, raw parameterized SQL where it doesn't; allowlisted sort keys; explicit soft-delete filtering; unique index behind the 409.
-6. **Events**: `bookmark.created` / `bookmark.deleted` via transactional outbox → `ReliablePublisher` to a `bookmarks` topic exchange (durable + DLX + DLQ + TTL); supervised, context-cancelled dispatcher.
-7. **Plus a consumer**: a small `cmd/indexer` (or second service) consuming those events into a `bookmark_counts` table — idempotent, bounded retry, poison messages to the DLQ.
-8. **Observability**: `/healthz/live`, `/healthz/ready` (pool checker), `/metrics` with RED metrics.
-9. **Tests**: table-driven handler tests per endpoint (denial cases included); both spec tests; one env-guarded integration test (repo + soft delete); `smoke.sh`.
-10. **Ops**: multi-stage Dockerfile; compose entry with healthcheck; `.golangci.yaml`; the five-command gate green; drafted (not applied) gateway route + dx-gitops files.
+## Verification
 
-## Suggested path
+Required evidence:
 
-Build in the order the curriculum taught, verifying each layer before the next:
+~~~bash
+gofmt -w .
+go vet ./...
+go test ./...
+go test -race ./...
+~~~
 
-1. **Skeleton** (2h): repo shape, config, boot with Postgres only, health endpoints. *Verify: boots, ready flips with DB down.*
-2. **Domain + persistence** (3h): schema, repository, integration test. *Verify: CRUD via psql-checked rows, soft delete filtered.*
-3. **API** (3h): handlers, router, spec, validation, envelopes. *Verify: spec tests green; curl every endpoint + every error path.*
-4. **Auth + audit** (2h): resolver, owner enforcement, audit middleware. *Verify: 401/403 paths; audit events visible in RMQ UI.*
-5. **Events** (3h): outbox, dispatcher, topology, indexer consumer. *Verify: create → count increments exactly once even when you deliver the event twice; poison message lands in DLQ.*
-6. **Hardening** (2h): metrics, Dockerfile, compose, smoke.sh, self-review against the standards, gate.
+Also provide:
 
-## Grading
+- unit tests for invariants and ownership;
+- repository/migration integration tests;
+- route/OpenAPI contract tests;
+- duplicate create and event redelivery tests;
+- forged subject, wrong owner, invalid sort, oversized body, and cancellation tests;
+- wrong workload audience/caller/subject asserter, organisation swap, authorization outage, and revocation tests;
+- a smoke script through the gateway;
+- a container SIGTERM drain test;
+- rendered GitOps manifests.
 
-Self-review first, then a reviewer (buddy/lead) grades **section by section against GO-SERVICE-STANDARDS.md** — the same way a real service would be reviewed. Expected outcome for a first attempt: mostly compliant with a handful of findings; **fixing the findings is part of the capstone**, because responding to review *is* the job.
+## Operational deliverables
 
-Classic findings, from experience: missing soft-delete filter in one query; unsupervised dispatcher goroutine; consumer not idempotent under redelivery; secrets in the baked YAML; `fmt.Println` debugging survivors; sort key reaching SQL unvalidated; log-and-return double handling.
+Document config, secrets, dependency policy, metrics, logs, traces, audit, dashboards, alerts, backup, rollout, rollback, and event replay. Use an immutable image digest.
 
-## Stretch goals (optional)
+## Review
 
-- Register it for real behind your local gateway (route config + policy) and call it with a `make dev-token` JWT through `:8000`.
-- Advisory-lock the dispatcher and prove single-instance behavior with two replicas.
-- A one-shot `cmd/purge` CronJob binary hard-deleting soft-deleted rows older than 30 days — idempotent, exit codes, YAML included.
+Present:
 
-When it's green and reviewed: [First Contribution](first-contribution).
+1. architecture diagram;
+2. one request trace;
+3. one transaction/outbox trace;
+4. threat model;
+5. test evidence;
+6. deployment and recovery plan;
+7. tradeoffs and intentionally deferred work.
+
+The capstone is complete when another engineer can operate and change it—not merely when curl returns 200.

@@ -49,7 +49,7 @@ Every one of these platform staples is reflection under the hood:
 | You write | The library reflects |
 |---|---|
 | `json.Unmarshal(body, &req)` | walks `req`'s fields, matches `json:` tags |
-| `dxconfig.LoadService[Config]()` | viper + mapstructure map YAML/env keys onto `mapstructure:` tags |
+| `platformconfig.Load[Config](options)` | viper + mapstructure map YAML/env keys onto `mapstructure:` tags |
 | `pgx.RowToStructByName[T](row)` | matches SQL column names to `db:` tags on `T` |
 
 Notice the division of labor: **you** declare intent with struct tags (declarative, checked by linters and tests); **the library** does the dynamic work. Your service code stays fully statically typed.

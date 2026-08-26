@@ -103,7 +103,7 @@ type ServerConfig struct {
 Only **exported** fields participate — a classic beginner bug is a struct that marshals to `{}` because its fields are lowercase.
 
 :::info[Platform connection]
-Every DX domain entity is a plain struct with tags: look at `dx-acl-go/internal/domain/policy.go` (domain entities), or any `internal/config/config.go` (a struct of `mapstructure`-tagged nested structs fed to `dxconfig.LoadService`). The generic DAO maps database rows into structs by their `db` tags via `pgx.RowToStructByName` — struct tags are literally the platform's ORM.
+Every DX domain entity is a plain struct: look at `dx-acl-go/internal/domain/policy.go`. Typed config embeds `platform/config.Base` and uses mapstructure-tagged fields. PostgreSQL row adapters use db tags with named-column scanning; keep those storage structs in the adapter rather than adding persistence tags to domain entities.
 :::
 
 ## Exercises

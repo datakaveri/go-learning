@@ -1,47 +1,56 @@
-# go-learning — DX Go Learning Path
+# CDPG Go Developer Portal
 
-The standard onboarding curriculum for Go developers joining the **Data Exchange (DX) platform** at CDPG. It takes an engineer from Go beginner to a productive platform contributor in **10–12 weeks part-time** (~8–10 hours/week), and doubles as a reference for engineers from other teams contributing to the Go service fleet.
+Canonical architecture, service-building tutorials, operational standards, and progressive Go curriculum for CDPG contributors.
 
-Built with [Docusaurus](https://docusaurus.io/), styled to match [cdpg-docs](https://github.com/datakaveri/cdpg-docs).
+The developer guide covers the Control Plane, Data Plane, Agentic Plane, gateway, identity, ACL, authorization, OpenFGA, planned OPA, shared Go platform, persistence, messaging, testing, local integration, and GitOps. `examples/dx-example-go` is a compile-tested teaching service.
 
-## What's inside
+## Documentation paths
 
-| Module | Weeks | Covers |
-|---|---|---|
-| 0 — Setup & Orientation | 1 | Toolchain, running the stack locally, platform mental map |
-| 1 — Go Fundamentals | 2–4 | Language: syntax → interfaces → errors → generics |
-| 2 — Intermediate Go | 5–7 | Concurrency, context, DI, config, logging, testing, profiling |
-| 3 — Advanced Go | 8–10 | HTTP/chi, REST, auth, pgx, transactions, RabbitMQ, workers, K8s, CI/CD |
-| 4 — The DX Platform | 11–12 | Architecture, dx-common-go, service anatomy, standards, security, deployment |
-| 5 — Capstone | +1–2 | Build a full DX-style service, land your first real PR |
+- Developer Guide: architecture, new-service tutorial, integrations, standards, and operations.
+- Go Curriculum: language through production service engineering.
+- Teaching Service: `examples/dx-example-go`.
 
-Exercises are **standalone Go programs in Modules 0–2** and **hands-on tasks against the real local stack (`make dev-up`) in Modules 3–5**.
+## Curriculum
 
-## Run locally
+| Module | Focus |
+|---|---|
+| 0 | Go 1.25 toolchain and platform orientation |
+| 1 | Language fundamentals |
+| 2 | Context, concurrency, injection, config, logging, testing, performance |
+| 3 | HTTP, security, persistence, events, workers, observability, containers, delivery |
+| 4 | Current Data Exchange architecture and dx-common-go platform APIs |
+| 5 | A complete service capstone and first contribution |
 
-```bash
+Early exercises are standalone. Later exercises use the real service source and local stack.
+
+## Build
+
+Requires Node.js 20 or newer.
+
+~~~bash
 npm ci
-npm start        # dev server at http://localhost:3000/go-learning/
-npm run build    # production build (fails on broken links)
 npm run typecheck
-```
+npm run build
+npm run start
+~~~
 
-## Contributing a page
+Validate the teaching service from the CDPG workspace:
 
-Every topic page follows the same template (see any existing page):
+~~~bash
+cd examples/dx-example-go
+go test ./...
+go vet ./...
+go test -race ./...
+~~~
 
-1. **Learning objectives** — bulleted, testable
-2. **Prerequisites** — links to prior pages
-3. **Time estimate** — hours, feeds the weekly schedule in the roadmap
-4. **Concepts** — explanations with runnable Go snippets
-5. **Platform connection** — admonition linking the topic to real DX code
-6. **Exercises** — standalone early, platform-tied later
-7. **Mini-project** — where meaningful
-8. **Check yourself** — 3–5 self-assessment questions
-9. **References** — official docs, style guides, platform docs
+The local URL is http://localhost:3000/go-learning/.
 
-House rules for content:
+## Content rules
 
-- Platform claims must be **verified against the actual code/docs** (dx-common-go, GO-SERVICE-STANDARDS.md) — don't teach from memory.
-- Teach what the platform actually practices (chi, pgx v5, zap, viper, amqp091-go; table-driven tests; no ORM, no testify).
-- Go snippets should compile — check with `go vet` before committing.
+- Verify platform claims against source.
+- Use [cdpg-docs](https://datakaveri.github.io/cdpg-docs/) for architecture and operations reference.
+- Use [dx-common-go-docs](https://datakaveri.github.io/dx-common-go-docs/) for exact SDK APIs and version policy.
+- Use the portal status vocabulary and never present planned behavior as operational.
+- Document only the Go platform architecture; do not retain retired platform/trust material for context.
+- Keep Go examples idiomatic, formatted, context-aware, and testable.
+- Every lesson ends with an exercise and a self-check.

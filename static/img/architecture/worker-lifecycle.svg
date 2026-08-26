@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 450" role="img" aria-labelledby="title desc">
+  <title id="title">Bounded worker lifecycle</title><desc id="desc">Bootstrap starts a supervised worker, which claims a leased item, processes under a deadline, commits and acknowledges, renews while healthy, stops on cancellation or lease loss, and releases before shutdown.</desc>
+  <defs><style>.t{font:700 24px Poppins,Segoe UI,sans-serif;fill:#1f3569}.h{font:700 14px Poppins,Segoe UI,sans-serif;fill:#1f3569}.b{font:12px Poppins,Segoe UI,sans-serif;fill:#3f4c66}.box{rx:13;stroke-width:2}.impl{fill:#e7f6ef;stroke:#15805d}.partial{fill:#fff4e8;stroke:#f57e20}.deny{fill:#fdecec;stroke:#b42318}.line{stroke:#8794b8;stroke-width:2;fill:none;marker-end:url(#a)}</style><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#8794b8"/></marker></defs>
+  <rect width="1120" height="450" fill="#fff"/><text x="40" y="42" class="t">Worker owns cancellation, lease, concurrency, and completion</text>
+  <rect x="30" y="125" width="140" height="75" class="box impl"/><text x="100" y="155" text-anchor="middle" class="h">Supervise</text><text x="100" y="180" text-anchor="middle" class="b">Go / Background</text>
+  <rect x="205" y="125" width="140" height="75" class="box partial"/><text x="275" y="155" text-anchor="middle" class="h">Claim</text><text x="275" y="180" text-anchor="middle" class="b">row / event / lease</text>
+  <rect x="380" y="125" width="140" height="75" class="box partial"/><text x="450" y="155" text-anchor="middle" class="h">Process</text><text x="450" y="180" text-anchor="middle" class="b">bounded + context</text>
+  <rect x="555" y="125" width="140" height="75" class="box partial"/><text x="625" y="155" text-anchor="middle" class="h">Commit</text><text x="625" y="180" text-anchor="middle" class="b">idempotent effect</text>
+  <rect x="730" y="125" width="140" height="75" class="box partial"/><text x="800" y="155" text-anchor="middle" class="h">Ack / release</text><text x="800" y="180" text-anchor="middle" class="b">only after durable</text>
+  <rect x="905" y="125" width="170" height="75" class="box impl"/><text x="990" y="155" text-anchor="middle" class="h">Drain</text><text x="990" y="180" text-anchor="middle" class="b">join before close</text>
+  <path d="M170 162H205M345 162H380M520 162H555M695 162H730M870 162H905" class="line"/>
+  <rect x="290" y="295" width="240" height="75" class="box deny"/><text x="410" y="325" text-anchor="middle" class="h">Cancel / lease lost</text><text x="410" y="350" text-anchor="middle" class="b">stop promptly · no new effect</text><path d="M450 200L420 295" class="line"/>
+  <rect x="610" y="295" width="240" height="75" class="box partial"/><text x="730" y="325" text-anchor="middle" class="h">Transient failure</text><text x="730" y="350" text-anchor="middle" class="b">bounded retry or DLQ</text><path d="M625 200L695 295" class="line"/>
+  <text x="40" y="415" class="b">Legend: green = lifecycle owner · orange = bounded work state · red = immediate stop/fail-safe path</text>
+</svg>

@@ -1,0 +1,28 @@
+schema_mode: migrate
+server:
+  port: 8080
+  max_body_bytes: 1048576
+postgres:
+  dsn: ""
+  search_path: example
+rabbitmq:
+  url: ""
+  exchange: example
+authorization:
+  base_url: http://dx-authz-go:8080
+  timeout: 2s
+workload_verifier:
+  enforcement: required
+  service: dx-example-go
+  jwks_url: ""
+  issuer: ""
+  allowed_callers: [dx-gateway-go]
+  subject_asserters: [dx-gateway-go]
+workload_issuer:
+  enabled: true
+  token_url: ""
+  client_id: ""
+  client_secret: ""
+jwt:
+  enabled: false
+

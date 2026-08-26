@@ -1,134 +1,84 @@
 ---
-title: Environment Setup
-sidebar_label: Environment Setup
-description: Install Go, an editor with gopls, Docker, and Git — and prove the toolchain works.
+title: Environment
+sidebar_label: Environment
+description: Install Go 1.25, verify the toolchain, and run the local Data Exchange stack.
 ---
 
-# Environment Setup
+# Environment
 
-## Learning objectives
+## Outcomes
 
-- Install and verify Go 1.22+, Docker Desktop, and Git.
-- Set up an editor with `gopls` (the Go language server), format-on-save, and lint integration.
-- Understand the handful of Go environment concepts that still matter (`GOPATH` mostly doesn't, `GOBIN` and module cache do).
-- Compile, run, test, and vet a first program.
+You will install the toolchain, run a Go test, start the platform, and know where each repository lives.
 
-## Prerequisites
+## Toolchain
 
-None. This is the starting line.
+Install:
 
-## Time estimate
+- Go 1.25 or newer;
+- Git;
+- Docker Desktop with Docker Compose v2;
+- GNU Make;
+- an editor with gopls.
 
-**2–3 hours** (mostly downloads).
+Verify:
 
-## Concepts
-
-### The toolchain
-
-Go ships as a single toolchain: compiler, formatter, test runner, vet, profiler, and module manager are all subcommands of `go`. There is no build-tool zoo — you will not need Maven/Gradle/webpack equivalents.
-
-```bash
-# macOS
-brew install go
-
-# Verify — the platform targets Go 1.22+
+~~~bash
 go version
-```
-
-The commands you'll use daily:
-
-| Command | What it does |
-|---|---|
-| `go run .` | Compile and run the current package |
-| `go build ./...` | Compile everything in the module |
-| `go test ./...` | Run all tests |
-| `go vet ./...` | Static analysis for likely bugs |
-| `gofmt -l .` | List files not formatted (must be empty in CI) |
-| `go mod tidy` | Sync `go.mod`/`go.sum` with actual imports |
-
-### Editor
-
-Any editor that speaks the Language Server Protocol works; **VS Code with the official Go extension** or **GoLand** are the common choices on the team. Make sure:
-
-- `gopls` is enabled (VS Code's Go extension installs it automatically).
-- Format-on-save is on — Go has exactly one formatting style; `gofmt` output is not negotiable and CI enforces it.
-- `goimports` runs on save (manages the import block for you).
-
-Install the linter the platform's CI runs:
-
-```bash
-brew install golangci-lint
-golangci-lint --version
-```
-
-### Environment variables that still matter
-
-Modern Go (modules era) needs almost no environment setup. Three things worth knowing:
-
-- **Module cache** — downloaded dependencies live in `$GOPATH/pkg/mod` (default `~/go/pkg/mod`). You never edit this.
-- **`GOBIN`** — where `go install` puts binaries (default `~/go/bin`). Add it to your `PATH`.
-- **`GOOS`/`GOARCH`** — cross-compilation switches; the platform's Dockerfiles use these to build Linux binaries from any host.
-
-```bash
-# Add to your shell profile
-export PATH="$PATH:$(go env GOPATH)/bin"
-```
-
-### Docker and Git
-
-The DX stack runs locally under Docker Compose, so you need **Docker Desktop** running with a reasonable resource allocation (≥8 GB memory recommended — the full stack includes PostgreSQL, Elasticsearch, Keycloak, RabbitMQ, Redis, and MinIO).
-
-```bash
-docker --version && docker compose version
+go env GOMOD GOWORK GOPATH
+gofmt -h
+go test -h
+docker compose version
 git --version
-```
+make --version
+~~~
 
-### Hello, DX
+Configure the editor to use gopls, format on save, and organize imports. Do not install a separate formatter that fights gofmt.
 
-Prove everything works end to end:
+## First Go module
 
-```bash
-mkdir hello-dx && cd hello-dx
+~~~bash
+mkdir hello-dx
+cd hello-dx
 go mod init example.com/hello-dx
-```
+go mod edit -go=1.25
+~~~
 
-Create `main.go`:
+Create a function and table-driven test, then run:
 
-```go
-package main
+~~~bash
+gofmt -w .
+go test ./...
+go vet ./...
+~~~
 
-import "fmt"
+## Platform workspace
 
-func main() {
-	fmt.Println("Hello, Data Exchange")
-}
-```
+In the orchestration repository:
 
-```bash
-go run .          # prints the greeting
-go vet ./...      # no output = no findings
-gofmt -l .        # no output = correctly formatted
-```
+~~~bash
+make dev-clone
+make dev-up
+make dev-init-dbs
+make dev-demo
+~~~
 
-:::info[Platform connection]
-Those last three commands aren't a toy — `go build ./...`, `go test ./...`, `gofmt -l .`, `go vet ./...`, and `golangci-lint run` are **the literal PR gate** for every DX Go service. You'll run them hundreds of times. Build the habit on day one.
-:::
+Service repositories are cloned inside the workspace because the Compose build context needs them together. They remain independent Git repositories.
 
-## Exercises
+Useful daily commands:
 
-1. Write a program that prints the Go version it was compiled with (hint: `runtime.Version()`).
-2. Deliberately mis-indent your `main.go`, run `gofmt -l .` and then `gofmt -w .`, and diff the result. Notice you never argue with it.
-3. Cross-compile your hello program for Linux (`GOOS=linux GOARCH=amd64 go build`) and confirm with `file` that you got an ELF binary.
+~~~bash
+make dev-pull
+make dev-status
+make dev-logs SVC=dx-gateway-go
+make dev-token
+make dev-down
+~~~
 
-## Check yourself
+## Checkpoint
 
-- What five commands make up the platform's PR gate?
-- Where do downloaded module dependencies live, and do you ever edit them?
-- Why is there no formatting debate in Go code review?
+- What is the difference between GOPATH, GOMOD, and GOWORK?
+- Why does gofmt have no project-specific style configuration?
+- Can you run make dev-demo and identify the first failing component from logs?
+- Can you show which Git repository owns a service file?
 
-## References
-
-- [Download and install Go](https://go.dev/doc/install)
-- [How to Write Go Code](https://go.dev/doc/code) — modules, layout, first test
-- [golangci-lint](https://golangci-lint.run/)
-- Platform: `claude-docs/QUICK-START.md` in the `cdpg-claude` repo (full prerequisites list)
+Do not continue until go test and the local platform health checks run successfully.

@@ -194,8 +194,10 @@ article a {
 
 /* Tables */
 .markdown table {
-  display: table;
+  display: block;
   width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
   font-size: 0.9rem;
 }
 .markdown table thead tr {
@@ -240,6 +242,33 @@ article a {
 /* Code blocks slightly smaller */
 .markdown pre code {
   font-size: 0.82rem;
+}
+
+/* Architecture SVGs use the same 1120px design grid and scale as one unit.
+   The border gives light SVG canvases a visible edge in dark mode. */
+.markdown img[src*='/img/architecture/'],
+.markdown img[src^='data:image/svg+xml'] {
+  display: block;
+  width: 100%;
+  max-width: 1120px;
+  height: auto;
+  margin: 1.25rem auto 1.75rem;
+  border: 1px solid var(--cdpg-border);
+  border-radius: 12px;
+  background: #fff;
+}
+
+@media (max-width: 720px) {
+  .markdown img[src*='/img/architecture/'],
+  .markdown img[src^='data:image/svg+xml'] {
+    min-width: 680px;
+  }
+
+  .markdown p:has(> img[src*='/img/architecture/']),
+  .markdown p:has(> img[src^='data:image/svg+xml']) {
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
 }
 /* Breadcrumbs */
 .breadcrumbs__item {

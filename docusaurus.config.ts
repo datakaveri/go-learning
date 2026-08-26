@@ -5,8 +5,8 @@ import type * as Preset from '@docusaurus/preset-classic';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-  title: 'DX Go Learning Path',
-  tagline: 'Go engineering curriculum for the Data Exchange platform',
+  title: 'CDPG Go Developer Portal',
+  tagline: 'Architecture, service engineering, and Go learning for the CDPG platform',
   favicon: 'img/favicon.svg',
 
   future: {
@@ -24,7 +24,7 @@ const config: Config = {
   markdown: {
     mermaid: true,
     hooks: {
-      onBrokenMarkdownLinks: 'warn',
+      onBrokenMarkdownLinks: 'throw',
     },
   },
 
@@ -93,7 +93,7 @@ const config: Config = {
       },
     },
     navbar: {
-      title: 'Go Learning Path',
+      title: 'CDPG Go',
       logo: {
         alt: 'DX — Data Exchange Go Learning Path',
         src: 'img/logo.svg',
@@ -102,15 +102,25 @@ const config: Config = {
       items: [
         {
           type: 'docSidebar',
+          sidebarId: 'developerGuideSidebar',
+          position: 'left',
+          label: 'Developer Guide',
+        },
+        {
+          type: 'docSidebar',
           sidebarId: 'curriculumSidebar',
           position: 'left',
-          label: 'Curriculum',
+          label: 'Go Curriculum',
         },
-        {to: '/roadmap', label: 'Roadmap', position: 'left'},
-        {to: '/category/module-4-the-dx-platform', label: 'Platform Track', position: 'left'},
+        {to: '/new-service/quick-start', label: 'New Service', position: 'left'},
         {
           href: 'https://datakaveri.github.io/cdpg-docs/',
           label: 'Platform Docs',
+          position: 'right',
+        },
+        {
+          href: 'https://datakaveri.github.io/dx-common-go-docs/',
+          label: 'Go SDK',
           position: 'right',
         },
         {
@@ -126,9 +136,9 @@ const config: Config = {
         {
           title: 'Learn',
           items: [
-            {label: 'Start Here', to: '/'},
-            {label: 'Roadmap & Milestones', to: '/roadmap'},
-            {label: 'Capstone Project', to: '/capstone/capstone-service'},
+            {label: 'Start Here', to: '/start/learning-paths'},
+            {label: 'New Service Tutorial', to: '/new-service/quick-start'},
+            {label: 'Service Review Scorecard', to: '/standards/review-scorecard'},
           ],
         },
         {
@@ -142,9 +152,11 @@ const config: Config = {
         {
           title: 'Platform',
           items: [
-            {label: 'CDPG Docs', href: 'https://datakaveri.github.io/cdpg-docs/'},
+            {label: 'Architecture orientation', to: '/architecture/platform-orientation'},
+            {label: 'Gateway integration', to: '/integrations/gateway'},
+            {label: 'Platform docs', href: 'https://datakaveri.github.io/cdpg-docs/'},
+            {label: 'dx-common-go docs', href: 'https://datakaveri.github.io/dx-common-go-docs/'},
             {label: 'GitHub', href: 'https://github.com/datakaveri'},
-            {label: 'CDPG', href: 'https://dataforpublicgood.org.in'},
           ],
         },
       ],

@@ -1,120 +1,70 @@
 ---
 title: Generics
 sidebar_label: Generics
-description: Type parameters and constraints — and how the platform uses them for the DAO and response envelopes.
+description: Type parameters, constraints, inference, zero values, and platform examples.
 ---
 
 # Generics
 
-## Learning objectives
+## Outcomes
 
-- Write generic functions and types with type parameters and constraints.
-- Use `any`, `comparable`, and interface-based constraints (including union constraints).
-- Know when generics help and when an interface (or plain code) is better.
-- Read the platform's flagship generic types: `BaseDAO[T]`, `Page[T]`, `DxResponse[T]`, `LoadService[T]`.
+You will recognize when a type parameter removes duplication without erasing domain meaning.
 
-## Prerequisites
+## Functions and types
 
-- [Interfaces](interfaces), [Packages & Modules](packages-modules)
-
-## Time estimate
-
-**3.5 hours**
-
-## Concepts
-
-### Type parameters
-
-```go
-func Map[T, U any](xs []T, f func(T) U) []U {
-	out := make([]U, 0, len(xs))
-	for _, x := range xs {
-		out = append(out, f(x))
-	}
-	return out
+~~~go
+func Map[A, B any](in []A, fn func(A) B) []B {
+    out := make([]B, 0, len(in))
+    for _, value := range in {
+        out = append(out, fn(value))
+    }
+    return out
 }
 
-names := Map(policies, func(p Policy) string { return p.ID })
-// type inference: no need to write Map[Policy, string](...)
-```
-
-`[T any]` declares a type parameter; the compiler generates and type-checks concrete instantiations. Unlike `any`-typed code there's no runtime assertion, no reflection, no chance of a type error surviving to production.
-
-### Constraints
-
-A constraint is an interface that limits what `T` can be — and therefore what your code may do with it:
-
-```go
-// comparable: anything usable with == (map keys, dedupe)
-func Dedupe[T comparable](xs []T) []T { ... }
-
-// union constraint: a set of concrete types
-type Number interface {
-	~int | ~int64 | ~float64
-}
-
-func Sum[T Number](xs []T) T {
-	var total T
-	for _, x := range xs {
-		total += x // legal because every member of Number supports +
-	}
-	return total
-}
-```
-
-The `~int` tilde means "any type whose underlying type is int" — so your `type Credits int` still satisfies `Number`.
-
-### Generic types
-
-```go
 type Page[T any] struct {
-	Items      []T `json:"items"`
-	TotalCount int `json:"totalCount"`
-	Limit      int `json:"limit"`
-	Offset     int `json:"offset"`
+    Items []T
+    Total int64
 }
+~~~
 
-func NewPage[T any](items []T, total, limit, offset int) Page[T] { ... }
-```
+The compiler often infers type arguments from ordinary arguments. Constraints describe supported operations; use comparable for map keys or equality and a type set only when algorithms require operators.
 
-One definition, every entity: `Page[Policy]`, `Page[Dataset]`, `Page[AuditRecord]` — all statically typed, no casting at the call site.
+## Zero values
 
-### When (not) to use generics
+~~~go
+func First[T any](values []T) (T, bool) {
+    var zero T
+    if len(values) == 0 {
+        return zero, false
+    }
+    return values[0], true
+}
+~~~
 
-Generics shine when the **algorithm is identical and only the type varies**: containers, slices/maps helpers, envelopes, data access plumbing. They are the wrong tool when behavior varies by type — that's an interface's job. Decision shortcut:
+Return an explicit boolean or error when the zero value is ambiguous.
 
-- Same code, many element types → **generics**.
-- Different implementations behind one contract → **interface**.
-- Used once, with one type → **neither**; write the plain version.
+## Platform examples
 
-Don't pre-generalize. The platform introduced generics exactly where duplication hurt (DAO, envelopes, config loading) and nowhere else — there is deliberately **no** generic service layer.
+- platform/http.Handler[Req, Res] keeps handlers typed.
+- platform/paging.Page[T] provides one client paging shape.
+- platform/database/sql.Repo[T] scans and persists row types.
+- platform/events.Topic[T] binds event name, version, and payload type.
+- cache.GetOrLoad[T] returns typed cached values.
+- bootstrap.Spec[C] carries a typed service config.
 
-:::info[Platform connection]
-The four generic types you'll touch weekly, all in `dx-common-go`:
+Each generic solves one repeated mechanical pattern while preserving an explicit semantic boundary.
 
-- **`BaseDAO[T]`** (`database/postgres/dao/base.go`) — CRUD, pagination, and transactional variants for any row-mapped struct `T`. Write a domain struct with `db` tags, get `FindByID`, `FindPage`, upsert and soft-delete support for free. Module 3's [Database Patterns](../module-3-advanced/database-patterns) is a deep dive.
-- **`Page[T]`** — the pagination envelope above, for real.
-- **`DxResponse[T]` / `DxPagedResponse[T]`** (`response/model.go`) — the platform's standard success envelope.
-- **`config.LoadService[T]`** — loads YAML + env into *your service's* config struct type. One loader, every service.
-:::
+## When not to use generics
 
-## Exercises
+Prefer an interface when implementations vary by behavior. Prefer a concrete domain function when two types merely look structurally similar. Avoid a generic repository that grows joins, workflows, validation, authorization, and auditing; those are different concerns.
 
-1. Write `Filter[T any](xs []T, keep func(T) bool) []T` and `Keys[K comparable, V any](m map[K]V) []K`.
-2. Write the `Number` constraint with `~`, then `Min[T Number](xs []T) (T, error)` — returning an error for an empty slice (tie-in to [Error Handling](error-handling)).
-3. Build your own `Page[T]` with a `Map` method converting `Page[T]` to `Page[U]`… and discover why methods can't introduce new type parameters. Write it as a free function instead — and remember the lesson.
-4. Implement a tiny generic in-memory `Repo[T any]` with `Save(id string, v T)`, `Get(id string) (T, bool)`, `All() []T` backed by a map — a toy version of what `BaseDAO[T]` does against Postgres.
+## Exercise
+
+Implement Map and Filter. Then use paging.MapPage to convert storage rows to API responses while preserving metadata. Compare the code and decide which implementation belongs in application code.
 
 ## Check yourself
 
-- What does the `~` in a constraint mean?
-- Why does `Sum[T Number]` compile but a version with `[T any]` not?
-- Interface or generics: five storage backends with different behavior? A `Reverse` that works on any slice?
-- Which platform types are generic, and why those?
-
-## References
-
-- [Go generics tutorial](https://go.dev/doc/tutorial/generics)
-- [Go Blog: An Introduction to Generics](https://go.dev/blog/intro-generics)
-- [Go Blog: When To Use Generics](https://go.dev/blog/when-generics) — required reading
-- Platform: `dx-common-go/database/postgres/dao/base.go`, `dx-common-go/response/model.go`
+- How do constraints differ from interfaces used as values?
+- When does the compiler infer T?
+- Why does Page[T] help more than a result typed any?
+- What is the warning sign that a generic abstraction is swallowing domain behavior?

@@ -1,14 +1,133 @@
 import type {SidebarsConfig} from '@docusaurus/plugin-content-docs';
 
-/**
- * The curriculum reads top-to-bottom: Start Here → Roadmap → Modules 0–4 →
- * Capstone. Each module is a sidebar category with a generated landing page,
- * and every page inside a module is numbered so the sidebar order matches the
- * intended study order.
- */
 const sidebars: SidebarsConfig = {
-  curriculumSidebar: [
+  developerGuideSidebar: [
     'index',
+    {
+      type: 'category',
+      label: 'Start here',
+      collapsed: false,
+      items: ['start/learning-paths', 'start/status-vocabulary', 'start/source-register'],
+    },
+    {
+      type: 'category',
+      label: 'Architecture',
+      collapsed: false,
+      link: {
+        type: 'generated-index',
+        title: 'CDPG Go platform architecture',
+        description:
+          'The Go platform planes, boundaries, ownership, status, and target architecture.',
+        slug: '/category/architecture',
+      },
+      items: [
+        'architecture/platform-orientation',
+        'architecture/current-target',
+        'architecture/control-plane',
+        'architecture/data-plane',
+        'architecture/agentic-plane',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Build a new service',
+      collapsed: false,
+      link: {
+        type: 'generated-index',
+        title: 'Build a new CDPG Go service',
+        description:
+          'A progressive tutorial from bounded context and repository scaffold through GitOps and release review.',
+        slug: '/category/build-a-new-service',
+      },
+      items: [
+        'new-service/quick-start',
+        'new-service/boundary-scaffold',
+        'new-service/bootstrap-transports',
+        'new-service/persistence-events',
+        'new-service/security-gateway',
+        'new-service/tests-local',
+        'new-service/gitops-readiness',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Service standards',
+      collapsed: true,
+      link: {
+        type: 'generated-index',
+        title: 'CDPG Go service standards',
+        description:
+          'Required architecture, Go style, API/transport rules, and evidence-based review gates.',
+        slug: '/category/service-standards',
+      },
+      items: [
+        'standards/service-architecture',
+        'standards/go-style',
+        'standards/api-transports',
+        'standards/review-scorecard',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Shared Go platform',
+      collapsed: true,
+      link: {
+        type: 'generated-index',
+        title: 'dx-common-go/platform',
+        description:
+          'Source-verified platform modules, public APIs, ownership, lifecycle, failure behavior, and misuse patterns.',
+        slug: '/category/shared-go-platform',
+      },
+      items: [
+        'platform/index',
+        'platform/bootstrap-config',
+        'platform/http-grpc',
+        'platform/persistence-cache',
+        'platform/events-workers',
+        'platform/identity-operations',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Security and integrations',
+      collapsed: true,
+      link: {
+        type: 'generated-index',
+        title: 'Security and platform integrations',
+        description:
+          'Gateway, identity, ACL, authorization, OpenFGA, planned OPA, workflows, and Data Plane enforcement.',
+        slug: '/category/security-integrations',
+      },
+      items: [
+        'integrations/gateway',
+        'integrations/identity',
+        'integrations/acl-policy',
+        'integrations/authorization',
+        'integrations/authorization-workflows',
+        'integrations/data-plane-authorization',
+      ],
+    },
+    {
+      type: 'category',
+      label: 'Data and operations',
+      collapsed: true,
+      link: {
+        type: 'generated-index',
+        title: 'Data, reliability, testing, and deployment',
+        description:
+          'Persistence, messaging, workers, observability, test strategy, local integration, and GitOps.',
+        slug: '/category/data-operations',
+      },
+      items: [
+        'operations/persistence',
+        'operations/messaging-workers',
+        'operations/observability',
+        'operations/testing',
+        'operations/local-deployment',
+      ],
+    },
+  ],
+  curriculumSidebar: [
     'roadmap',
     {
       type: 'category',

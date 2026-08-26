@@ -144,4 +144,4 @@ Real examples worth reading now: DX services test that the **embedded OpenAPI sp
 - [testing package](https://pkg.go.dev/testing) · [httptest](https://pkg.go.dev/net/http/httptest)
 - [Go Wiki: Table-Driven Tests](https://go.dev/wiki/TableDrivenTests)
 - [go-cmp](https://pkg.go.dev/github.com/google/go-cmp/cmp)
-- Platform: `claude-docs/TESTING.md`; GO-SERVICE-STANDARDS.md (testing gates)
+- Platform: [Testing strategy](https://datakaveri.github.io/cdpg-docs/docs/develop/testing) and [SDK testing guide](https://datakaveri.github.io/dx-common-go-docs/guides/testing)

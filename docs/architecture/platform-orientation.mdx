@@ -1,0 +1,104 @@
+---
+title: CDPG Go platform orientation
+description: Planes, actors, boundaries, dependencies, trust, and data flows in the CDPG Go platform.
+---
+
+# CDPG Go platform orientation
+
+**Status: Partially implemented.** Control Plane services and shared infrastructure are broadly implemented; Data Plane coverage is partial; Agentic Plane components run in local integration but are not present in GitOps; composite contextual authorization and carried Data Plane decisions are planned.
+
+The Centre for Data for Public Good (CDPG) platform is a service-oriented data exchange. The Go architecture separates governance, data serving, and delegated agent execution so each can evolve and scale without sharing business databases or policy logic.
+
+![CDPG Go platform planes and boundaries](/img/architecture/platform-planes.svg)
+
+## Governing principles
+
+- A service owns one bounded context, its contracts, and its persistent data.
+- External clients enter through `dx-gateway-go`; public HTTPS uses REST/JSON unless a standards-native representation is required.
+- Internal service contracts target gRPC/protobuf. Adoption is **Partially implemented**, so current HTTP integrations must be treated as explicit gaps rather than copied into new services.
+- Authentication proves an identity. Authorization decides whether that identity may perform an operation. Enforcement occurs at Policy Enforcement Points (PEPs), never in the identity provider.
+- Relationship data, contextual policy, business data, and enforcement stay in distinct components.
+- Domain state and its outbound event commit atomically through a transactional outbox.
+- Configuration selects behavior; binaries do not branch on a named environment.
+- Security controls default deny and fail closed. Optional authentication means “anonymous if absent, reject if invalid,” never “ignore a bad token.”
+- The shared Go platform owns repeatable infrastructure behavior, not domain policy.
+
+## Planes and responsibilities
+
+### Control Plane
+
+The Control Plane governs identities, organisations, resources, policies, entitlements, audit, notifications, credits, and subscriptions.
+
+| Capability | Primary service | Data ownership and interactions | Status |
+|---|---|---|---|
+| Edge routing and enforcement | `dx-gateway-go` | Route configuration, token validation, workload credential issuance, coarse relationship checks | Implemented; richer profiles planned |
+| Users, organisations, application credentials | `dx-user-go` | User/org records and Keycloak integration; publishes organisation membership events | Partially implemented |
+| Policy administration | `dx-acl-go` | Grant, access-request, and delegation records; publishes `policy.*` and delegation events | Partially implemented |
+| Authorization decisions | `dx-authz-go` | OpenFGA projection and `/v1/check`; composite OPA/obligation decision is planned | Partially implemented |
+| Catalogue | `dx-catalogue-go` | Dataset metadata and search index; publishes ownership relationship events | Partially implemented |
+| Marketplace | `dx-marketplace-go` | Listings, purchase state, payment integration, entitlement orchestration | Partially implemented |
+| Registry | `dx-registry-go` | Resource registration and discovery metadata | Implemented |
+| Credits | `dx-credits-go` | Credit balances and billing facts | Implemented |
+| Subscriptions | `dx-subscription-go` | Subscription definitions and delivery state | Implemented with remaining end-to-end authorization gaps |
+| Audit | `dx-audit-go` | Append-only audit projection and read/export APIs | Implemented |
+| Notifications | `dx-notification-go` | Templates, dispatch state, event consumption | Implemented |
+| Community | `dx-community-layer-go` | Discussions and challenges | Partially implemented |
+
+### Data Plane
+
+The Data Plane ingests, indexes, stores, filters, and serves governed data.
+
+- `dx-dataplane-rs-go` serves NGSI-LD entity and temporal queries over Elasticsearch. It is **Partially implemented** and intentionally not publicly routed until the carried-authorization contract is complete.
+- `dx-dataplane-ogc-go` serves OGC API Features, Tiles, Coverages, Processes, and Records over PostgreSQL/PostGIS. It is **Partially implemented**.
+- `dx-files-connect-api-go` owns file metadata, object-storage operations, upload/download flows, processing jobs, and short-lived storage credentials. It is **Partially implemented**.
+
+Data Plane services own query translation and datastore safety. They do not own access policy. The target flow carries a time-bounded decision and typed obligations from a PEP; the Data Plane verifies and translates those obligations through allowlisted, parameterized builders. It does not synchronously call the Policy Decision Point (PDP) for every query.
+
+### Agentic Plane
+
+The Agentic Plane provides delegated, governed automation:
+
+- `dx-agent-registry-go` owns agent records, templates, agent identity clients, lifecycle state, revocation, and kill switch.
+- `dx-mcp-gateway-go` exposes Model Context Protocol (MCP) tools, validates schemas, applies the semantic firewall, risk controls, human approval, and tool-call enforcement.
+- `dx-agent-runtime-go` owns sessions, Server-Sent Events (SSE), planning/execution loops, durable session leases, token exchange, and cancellation.
+
+All three are **Partially implemented**: local Compose integration exists, while GitOps registration, full production streaming validation, and complete adversarial evidence are not complete. An agent is an actor representing a human subject; its delegated authority can only narrow the subject’s effective rights.
+
+## Shared infrastructure
+
+| Dependency | Role | Ownership rule |
+|---|---|---|
+| Keycloak | OpenID Connect (OIDC), user/client authentication, JSON Web Key Set (JWKS), token exchange | Does not decide resource authorization. |
+| OpenFGA | Relationship tuples and graph evaluation | Does not authenticate, own business data, produce filters, or enforce a result. |
+| OPA | Planned contextual/attribute policy evaluation | Runtime, bundle, signing, distribution, and rollback decisions remain open. |
+| PostgreSQL/PostGIS | Service-owned transactional and spatial data | One migration actor per service-owned schema/database. |
+| Elasticsearch | Search, catalogue, NGSI-LD temporal/entity indexes | Owning service defines mappings, templates, aliases, and recovery. |
+| Redis | Bounded caches and explicitly designed ephemeral coordination | Never the accidental source of durable truth. |
+| RabbitMQ | At-least-once event delivery | Producers use an outbox; consumers are idempotent and reconcile projections. |
+| S3-compatible storage | Objects and file payloads | Owning service controls buckets, key namespaces, retention, and capabilities. |
+
+## Primary actors
+
+- Consumers discover and access governed data.
+- Providers onboard data, own resources, and administer grants.
+- Organisation administrators manage membership and organisation-scoped policy.
+- Platform administrators govern shared configuration and operational controls.
+- Applications authenticate as workloads.
+- Agents act under an explicit, revocable delegation from a human subject.
+- Operators deploy, observe, reconcile, and recover services.
+
+## Boundaries and data flow
+
+1. A client authenticates with Keycloak and calls the public gateway.
+2. The gateway validates the external token, removes spoofable internal headers, applies route posture and coarse authorization, and obtains a destination-bound workload credential.
+3. The destination verifies the calling workload and only accepts asserted subject context from an allowlisted subject asserter.
+4. The application service performs object and state-sensitive authorization before reading or mutating service-owned data.
+5. A state change and outbox event commit together. RabbitMQ delivers the event at least once; consumers update their own projections idempotently.
+6. Audit records correlate request, trace, subject, actor, workload, decision, resource, and outcome without recording credentials or protected payloads.
+
+## Current state versus target
+
+The architecture is intentionally explicit about gaps. Read [Current and target state](./current-target.md) before depending on an integration, then use the relevant guide for its safe interim behavior.
+
+Broader references: [platform overview](https://datakaveri.github.io/cdpg-docs/architecture/overview), [security architecture](https://datakaveri.github.io/cdpg-docs/technical/security-architecture), and [Agentic Plane](https://datakaveri.github.io/cdpg-docs/architecture/agentic-plane).
+

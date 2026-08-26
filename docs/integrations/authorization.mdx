@@ -1,0 +1,133 @@
+---
+title: Authorization service, OpenFGA, and OPA
+description: Canonical responsibility boundaries and current/target authorization behavior.
+---
+
+# Authorization service, OpenFGA, and OPA
+
+**Status: Partially implemented.** OpenFGA-backed relationship checks and event projection exist. The composite decision contract, OPA integration, typed obligations, decision attestation, and revision-aware caching are **Planned**.
+
+![OpenFGA and OPA responsibility split](/img/architecture/fga-opa-split.svg)
+
+## Responsibility matrix
+
+| Component | Owns | Must not own |
+|---|---|---|
+| Keycloak | User/client authentication, OIDC/JWKS, workload credentials, agent token exchange | Resource permissions or Data Plane filters |
+| `dx-gateway-go` | External token validation, route posture, coarse PEP checks, workload credential and subject propagation | Grant CRUD, relationship tuples, contextual policy, application state |
+| `dx-acl-go` | PAP: grant/access-request/delegation lifecycle and events | Runtime graph/context decisions or enforcement |
+| `dx-authz-go` | PDP API, input validation, decision orchestration, OpenFGA client/projection; planned OPA composition and decision metadata | Authentication, business data, policy authoring, enforcement |
+| OpenFGA | Relationship tuples/model, membership/ownership/access graph evaluation | Authentication, contextual conditions, row/field/spatial filters, quotas, business data, enforcement |
+| OPA | **Planned:** contextual/attribute policy and typed-obligation selection | Authentication, relationship storage, direct service-database reads, raw SQL/CQL/DSL, side effects, replacing composite PDP |
+| Application/Data Plane PEP | Map operation/object, request decision, verify result, enforce obligations and business state | Independent policy language or tuple administration |
+
+## Current `dx-authz-go` API
+
+`POST /v1/check` accepts:
+
+```json
+{
+  "subject_type": "user",
+  "subject_id": "user-42",
+  "organisation_id": "",
+  "resource_type": "resource",
+  "resource_id": "dataset-17",
+  "relation": "viewer"
+}
+```
+
+Current `subject_type` validation permits `user` or `group`; `organisation_id` is required for a group. The result contains `allowed`, canonicalized `subject`, `object`, and `relation` in the standard response envelope. Backend errors fail closed and do not return an allow.
+
+The current API does **not** return a decision ID, policy/relationship revision, expiry, stable denial code, typed obligation, delegation composition, or attestation. Do not document or consume those fields as operational.
+
+## Current OpenFGA model
+
+Verified types and relationships:
+
+```text
+user
+agent: owner -> user
+organization: member -> user
+group: owner -> organization; member -> user
+resource:
+  owner -> user | organization
+  editor -> user | group#member | organization#member
+  viewer -> user | group#member | organization#member; viewer includes editor
+  delegated_viewer -> agent
+  delegated_editor -> agent
+  delegated_querier -> agent
+```
+
+Tuple/check examples:
+
+```text
+user:user-42              viewer  resource:dataset-17
+organization:org-7#member editor  resource:dataset-17
+agent:agent-9             delegated_querier resource:dataset-17
+```
+
+```json
+{"user":"user:user-42","relation":"viewer","object":"resource:dataset-17"}
+```
+
+`policy.*`, `org.member.*`, `group.member.*`, and `delegation.*` consumers are present in authorization code. Producer coverage is incomplete—particularly group membership—so reconciliation and default deny are required. ACL item/access terminology and this generic resource model are not fully normalized; the authorization team must publish a canonical type/relation registry.
+
+## Target composite decision
+
+![Composite authorization decision](/img/architecture/composite-authorization.svg)
+
+The planned `dx-authz-go` decision orchestrates:
+
+1. Validate authenticated subject, actor/delegation, organisation, resource, action, and contextual inputs.
+2. Evaluate the required OpenFGA relationship(s).
+3. Evaluate planned OPA contextual policy using bounded, already-supplied attributes—never live service-database access from policy.
+4. Intersect human authority with agent/app delegation and active registry state.
+5. Return default-deny allow/deny, stable reason codes, decision ID, expiry, relationship and policy revisions, and typed obligations.
+
+Pseudocode target result:
+
+```json title="Planned contract — not a current API"
+{
+  "decisionId": "dec_...",
+  "allowed": true,
+  "reasonCode": "ALLOW_RELATION_AND_CONTEXT",
+  "expiresAt": "2026-08-10T10:00:30Z",
+  "relationshipRevision": "...",
+  "policyRevision": "...",
+  "obligations": [
+    {"type": "field_mask", "fields": ["id", "observedAt", "value"]},
+    {"type": "result_limit", "maximum": 1000},
+    {"type": "audit", "level": "data_access"}
+  ]
+}
+```
+
+Unknown inputs, unsupported obligations, stale/expired revisions, unavailable mandatory evaluators, inconsistent actor/subject, or ambiguous resource mappings deny.
+
+## Planned OPA boundary
+
+OPA evaluates contextual/attribute policy such as declared purpose, resource classification, risk, time/network context, agent/tool guardrails, and selection of typed obligations/stable denial reasons. It receives a bounded input document from `dx-authz-go`.
+
+OPA must not authenticate a caller, store OpenFGA relationships, fetch service rows, produce executable SQL/CQL/Elasticsearch text, mutate business state, call tools, or become a second public PDP.
+
+The following are open decisions requiring a reconciled ADR:
+
+- policy author and review authority;
+- repository and test requirements;
+- bundle construction and signing authority;
+- distribution and runtime placement;
+- readiness-gated activation and last-known-good behavior;
+- revision reporting and cache invalidation;
+- rollback and emergency disable;
+- audit retention and change attribution.
+
+Until approved and implemented, services do not call OPA directly and do not pretend contextual constraints have been evaluated.
+
+## Caching and audit
+
+Current relationship checks have no documented revision-aware decision cache contract. A future cache key must bind subject, actor/delegation, organisation, resource, action, relevant context digest, relationship revision, policy revision, and obligation schema version; TTL must not exceed decision/delegation/token expiry. Deny caching should be short and observable. Revocation invalidates or supersedes cached allows.
+
+Every decision should eventually emit decision ID, input references/digests, evaluator revisions, result/reason, obligations, enforcement outcome, request/trace correlation, and latency without logging protected attributes or full policy input.
+
+Continue with [Authorization workflows](./authorization-workflows.md) and [Data Plane authorization](./data-plane-authorization.mdx).
+

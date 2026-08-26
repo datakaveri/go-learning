@@ -1,0 +1,125 @@
+---
+title: Data Plane authorization and typed obligations
+description: Safely carry, verify, and enforce authorization in NGSI-LD, OGC, file, and subscription paths.
+---
+
+# Data Plane authorization and typed obligations
+
+**Status: Planned target contract.** Current Data Plane services do not implement the complete carried-decision artifact. `dx-dataplane-rs-go` stays out of public exposure until safe enforcement exists. Examples on this page are pseudocode unless explicitly described as current datastore practice.
+
+![Data Plane carried-decision enforcement](/img/architecture/data-plane-carried-decision.svg)
+
+## Target rule
+
+A gateway or application PEP obtains a composite authorization decision. The decision and typed obligations travel to the Data Plane. The Data Plane verifies that the decision is authentic, current, correctly scoped, and bound to the request, then translates supported obligations through allowlisted parameterized builders.
+
+The Data Plane:
+
+- does **not** synchronously call the PDP for every query;
+- does not recreate access policy;
+- does not accept executable SQL, CQL, or Elasticsearch Domain Specific Language (DSL) from policy;
+- denies when a required obligation is unknown or cannot be enforced.
+
+## Planned decision binding
+
+The artifact must bind at least:
+
+| Binding | Why |
+|---|---|
+| Decision ID and integrity protection | Detect forgery and correlate enforcement/audit |
+| Subject and actor/delegation | Prevent use by another user or agent |
+| Organisation | Preserve tenant boundary |
+| Resource set and operation | Prevent use for another dataset/action |
+| Method/path and normalized query digest | Prevent replay against a broader request |
+| Issued/expiry time | Bound stale use |
+| Policy and relationship revisions | Detect superseded decisions |
+| Typed obligations and schema version | Ensure deterministic enforcement |
+| Decision issuer/audience | Bind to authorised PEP and destination |
+
+The serialization, signing/attestation mechanism, request digest, lifetime, revision API, revocation signal, and transport are open decisions. Until approved, no page or service may invent fields and call them interoperable.
+
+## Typed obligations
+
+Expected categories include row/resource filters, field masks, spatial bounds, temporal windows, result-size limits, quota/metering, purpose restrictions, and mandatory audit level. The decision selects typed values; the Data Plane owns safe translation.
+
+```go title="Planned pseudocode — not an existing platform API"
+type Obligations struct {
+    AllowedEntityTypes []string
+    FieldMask         []FieldName
+    SpatialBounds     *PolygonID
+    TemporalWindow    *TimeWindow
+    MaximumResults    int
+    Purpose           PurposeCode
+    AuditLevel        AuditLevel
+}
+
+func Enforce(decision Decision, request Query) (SafePlan, error) {
+    if err := verifier.Verify(decision, Bind(request)); err != nil {
+        return SafePlan{}, ErrDenied
+    }
+    return builder.BuildParameterized(request, decision.Obligations)
+}
+```
+
+`FieldName`, `PolygonID`, and purpose values are allowlisted enums/identifiers. No obligation carries a raw datastore expression.
+
+## NGSI-LD and Elasticsearch
+
+**Current query engine: Partially implemented. Carried enforcement: Planned.**
+
+1. Parse NGSI-LD parameters into a typed query model.
+2. Verify decision bindings and expiry/revisions.
+3. Intersect requested entity types, IDs, attributes, temporal range, geometry, and limit with obligations.
+4. Translate the intersection through an allowlisted Elasticsearch builder.
+5. Use exact term/range/geo clauses and bounded pagination; never concatenate policy text.
+6. Return only permitted attributes and record result count/decision/audit reference.
+
+If the intersection is empty, return a safe empty result or denial according to the public contract. If an obligation cannot be expressed safely, deny. Index mapping/version and policy vocabulary must be contract-tested together.
+
+## OGC and PostGIS
+
+**Current OGC engine: Partially implemented. Carried enforcement: Planned.**
+
+1. Resolve collection and OGC operation to a canonical resource/action.
+2. Verify decision bindings.
+3. Parse CQL2/OGC filters independently as user input.
+4. Intersect with allowed collection, columns, bounding geometry, time window, and maximum features.
+5. Compile through an allowlisted parameterized SQL/PostGIS builder.
+6. Project only allowed fields and apply deterministic limits.
+
+Policy never returns a `WHERE` clause. Spatial obligation geometry is resolved through an owned identifier or validated typed geometry, not pasted into SQL. CRS transformations are allowlisted and bounded.
+
+## File download and object capability
+
+**Current file path: Partially implemented. Target capability binding: Planned.**
+
+Verify decision subject/actor/org/object/action, file readiness and checksum, requested range/representation, expiry, and obligations. Mint the shortest useful object capability for one bucket/key/action and enforce content/range limits. Revocation cannot recall a URL already issued, so its lifetime and scope are part of the risk decision. Never put a capability in logs, events, analytics, or redirects to untrusted origins.
+
+## Subscription creation and continued delivery
+
+**Status: Planned carried-decision model over a partially implemented subscription service.**
+
+At creation, bind decision to normalized query/resource and store decision reference, expiry/revisions, obligations, subscriber, cursor, and audit requirements. Before or during delivery, stop when decision/delegation expires, a revocation/revision signal invalidates it, an obligation becomes unsupported, or quota is exhausted. Reauthorization happens at a bounded control point, not synchronously for every emitted record.
+
+## Cache, revocation, and failure
+
+- Cache only a verified decision or normalized enforcement plan keyed by every binding and revision.
+- TTL never exceeds decision, token, grant, delegation, or capability expiry.
+- Revocation/revision events invalidate matching entries; reconciliation detects misses.
+- An unavailable revocation/revision source fails closed once freshness cannot be proven.
+- Clock skew tolerance is bounded and tested.
+- Unsupported obligation, invalid attestation, mismatch, expiry, stale revision, or unknown issuer/audience denies.
+
+## Required tests before exposure
+
+- artifact forgery, tamper, replay, wrong audience, wrong request digest, subject/actor/org swapping;
+- expiry/skew/revision/revocation races;
+- every typed obligation translator and unsupported type;
+- field/row/spatial/temporal intersection cannot widen a request;
+- parameterization/injection fuzzing;
+- pagination and result limits across pages;
+- audit correlation and redaction;
+- fail-closed dependency and cache behavior;
+- no synchronous PDP call in the Data Plane request path.
+
+The authorization, Data Plane, and security teams jointly own the missing ADR and conformance suite. Until then, keep routes disabled or enforce only a reviewed, explicit local control with no unsupported claims.
