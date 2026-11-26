@@ -6,7 +6,7 @@ description: How dx-user-go's 363-line main.go became a readable, documented boo
 
 # Case study: restructuring a boot cycle
 
-**Status: In development.** The refactor is on dx-user-go branch [`refactor/main-boot-cycle`](https://github.com/datakaveri/dx-user-go/tree/refactor/main-boot-cycle) (commit `8061f89`). It is tested but not yet merged to `dev`. The bootstrap behaviour it relies on is **Implemented** in `dx-common-go/platform/bootstrap`.
+**Status: Implemented.** The refactor is merged into dx-user-go `dev`: [PR #24](https://github.com/datakaveri/dx-user-go/pull/24), merge commit `207ce6e`, source in [`dx-user-go/cmd/server`](https://github.com/datakaveri/dx-user-go/tree/dev/cmd/server). It is not yet released to `main` or deployed. The bootstrap behaviour it relies on is **Implemented** in `dx-common-go/platform/bootstrap`.
 
 Read [Service anatomy](./04-service-anatomy.md) and [Bootstrap and typed configuration](../platform/bootstrap-config.md) first.
 
