@@ -16,7 +16,7 @@ cmd/server/main.go calls bootstrap.Run with:
 - embedded migrations and required PostgreSQL;
 - Wire for repository, service, handler, event bus, dispatcher, clients, workers, and router.
 
-Bootstrap owns server and process lifecycle. Wire owns the service-specific graph.
+Bootstrap owns server and process lifecycle. Wire owns the service-specific graph. Once that graph grows past a few dependencies, structure it as one ordered build list plus one file per dependency: see the [boot-cycle case study](./09-boot-cycle-case-study.md).
 
 ## HTTP adapter
 

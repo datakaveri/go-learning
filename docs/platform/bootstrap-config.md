@@ -89,9 +89,10 @@ func main() {
 | `app.Go(name, fn)` | Essential long-running work | Returned error coordinates shutdown. |
 | `app.Background(name, fn)` | Reconnecting consumer or recoverable loop | Failure is logged and restarted with bounded backoff. |
 | `app.Closer(name, fn)` | Owned resource not constructed by bootstrap | Runs last-in-first-out after servers and workers drain. |
-| `app.Probe(name, checker)` | Service-specific readiness | Failed check removes readiness. |
+| `app.Probe(name, checker)` | Service-specific readiness | **Critical:** a failed check turns `/healthz/ready` into 503 and removes the replica from traffic. |
+| `app.Health.AddOptional(name, checker)` | A dependency the service genuinely degrades around | Reported in `/healthz/ready`, but never makes the replica unready. |
 
-Do not mark a required authorization, database, or policy dependency optional merely to make a pod start.
+Do not mark a required authorization, database, or policy dependency optional merely to make a pod start. The reverse matters as well: an optional dependency registered with `app.Probe` can take every replica out of traffic when only that dependency is down.
 
 ## Operational modes
 
@@ -105,7 +106,38 @@ An unknown mode is a startup error. GitOps uses the same image for the migration
 
 ## Failure and observability
 
-Configuration errors name the invalid field and stop boot. Dependency readiness is registered automatically. Shutdown first stops accepting HTTP/gRPC work, then cancels and joins workers, then closes infrastructure. A service must test cancellation and drain within its Kubernetes termination grace period.
+Configuration errors name the invalid field and stop boot. Postgres readiness is registered automatically; register every other dependency yourself, as critical or optional.
+
+### Boot order
+
+Verified in `dx-common-go/platform/bootstrap/bootstrap.go` (`run`):
+
+1. boot mode;
+2. signal handler;
+3. config (`config-check` exits here);
+4. logger;
+5. tracing (a failure only logs a warning);
+6. migrations on a dedicated connection (`migrate-only` exits here);
+7. Postgres;
+8. `Wire`, then `GRPC`.
+
+After that, the HTTP server, the gRPC server and the workers start **at the same time**.
+
+### Shutdown order
+
+Verified in `serve`:
+
+1. **HTTP drains.** The gRPC server stops gracefully at the **same time**, from the same cancelled context. It is not drained before or after HTTP.
+2. **Workers are cancelled and awaited,** only after HTTP has drained.
+3. **Closers run in reverse registration order.** Telemetry was registered first, so it flushes last.
+
+Successful closers log nothing, so read the closing order from code, not logs.
+
+### Time budget
+
+Each of the three phases is bounded **separately** by `server.shutdown_timeout`, which defaults to 20 s. The worst case is therefore about 60 s, which is longer than the Kubernetes default grace period of 30 s. A service must test cancellation and drain within its Kubernetes termination grace period. This is a recorded gap: see [Known gaps in the SDK reference](https://datakaveri.github.io/dx-common-go-docs/platform/bootstrap-config#known-gaps).
+
+For a worked example of a composition root, and of proving a change to it, see the [boot-cycle case study](../module-4-platform/09-boot-cycle-case-study.md) and [Verify a boot cycle](../operations/verify-boot-cycle.md).
 
 ## Common misuse
 
